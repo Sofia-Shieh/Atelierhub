@@ -1,0 +1,3753 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>软件发放管理 · SAM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ══════════════════════════════════════════
+       DESIGN TOKENS — 2025 SaaS Palette
+    ══════════════════════════════════════════ */
+    :root {
+      /* Backgrounds */
+      --bg:           #F4F6F9;
+      --bg-subtle:    #EAECF0;
+      --surface:      #FFFFFF;
+      --surface-2:    #F8F9FB;
+      --surface-3:    #EEF0F4;
+      --surface-4:    #E4E7ED;
+
+      /* Borders */
+      --border:       rgba(0,0,0,0.08);
+      --border-2:     rgba(0,0,0,0.14);
+      --border-3:     rgba(0,0,0,0.2);
+
+      /* Text */
+      --text-1:       #0D1117;
+      --text-2:       #4B5563;
+      --text-3:       #9CA3AF;
+      --text-inv:     #FFFFFF;
+      --text-sidebar: rgba(255,255,255,0.9);
+
+      /* Sidebar */
+      --sidebar-bg:   #0F1117;
+      --sidebar-surface: rgba(255,255,255,0.06);
+      --sidebar-border: rgba(255,255,255,0.08);
+      --sidebar-active: rgba(99,102,241,0.2);
+      --sidebar-active-border: #6366F1;
+
+      /* Primary — Indigo */
+      --primary:        #4F46E5;
+      --primary-hover:  #4338CA;
+      --primary-light:  #EEF2FF;
+      --primary-mid:    rgba(79,70,229,0.12);
+      --primary-glow:   rgba(99,102,241,0.35);
+
+      /* Semantic */
+      --green:          #10B981;
+      --green-light:    #ECFDF5;
+      --green-mid:      rgba(16,185,129,0.12);
+
+      --amber:          #F59E0B;
+      --amber-light:    #FFFBEB;
+      --amber-mid:      rgba(245,158,11,0.12);
+
+      --red:            #EF4444;
+      --red-light:      #FEF2F2;
+      --red-mid:        rgba(239,68,68,0.12);
+
+      --violet:         #8B5CF6;
+      --violet-light:   #F5F3FF;
+      --violet-mid:     rgba(139,92,246,0.12);
+
+      --cyan:           #06B6D4;
+      --cyan-light:     #ECFEFF;
+
+      /* Alias for legacy compat */
+      --blue:           var(--primary);
+      --blue-light:     var(--primary-light);
+      --blue-mid:       var(--primary-mid);
+
+      /* Radius */
+      --r4:  4px;
+      --r6:  6px;
+      --r8:  8px;
+      --r10: 10px;
+      --r12: 12px;
+      --r16: 16px;
+      --r20: 20px;
+      --r24: 24px;
+
+      /* Typography */
+      --sans: "Inter", "PingFang SC", "SF Pro Display", "Microsoft YaHei UI", system-ui, sans-serif;
+      --mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+      /* Shadows */
+      --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-xl: 0 32px 80px rgba(0,0,0,0.16), 0 8px 24px rgba(0,0,0,0.08);
+    }
+
+    /* ══════════════════════════════════════════
+       RESET
+    ══════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+    body {
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-1);
+      background: var(--bg);
+      min-height: 100vh;
+    }
+    button, input, select, textarea { font: inherit; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ══════════════════════════════════════════
+       LAYOUT SHELL
+    ══════════════════════════════════════════ */
+    .shell {
+      display: grid;
+      grid-template-columns: 256px 1fr;
+      grid-template-rows: 56px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ══════════════════════════════════════════
+       TOP BAR
+    ══════════════════════════════════════════ */
+    .topbar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px 0 0;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 256px;
+      padding: 0 20px;
+      height: 100%;
+      border-right: 1px solid var(--border);
+      background: var(--sidebar-bg);
+      flex-shrink: 0;
+    }
+
+    .brand-icon {
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+      border-radius: var(--r8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(99,102,241,0.5);
+    }
+
+    .brand-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.4px;
+    }
+
+    .brand-tagline {
+      font-size: 10px;
+      color: rgba(255,255,255,0.45);
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+
+    .topbar-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 8px;
+    }
+
+    .topbar-page-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .topbar-breadcrumb {
+      font-size: 13px;
+      color: var(--text-3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .topbar-breadcrumb-sep {
+      color: var(--text-3);
+      opacity: 0.5;
+    }
+
+    .topbar-page-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+
+    .topbar-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ══════════════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════════════ */
+    .sidebar {
+      background: var(--sidebar-bg);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow-y: auto;
+      position: sticky;
+      top: 56px;
+      height: calc(100vh - 56px);
+    }
+
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      padding: 12px 10px 6px;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: var(--r8);
+      font-size: 13.5px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.55);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+    }
+
+    .tab:hover {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.85);
+    }
+
+    .tab.active {
+      background: rgba(99,102,241,0.18);
+      color: #A5B4FC;
+      font-weight: 600;
+      border: 1px solid rgba(99,102,241,0.25);
+    }
+
+    .tab-icon {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+    .tab.active .tab-icon { opacity: 1; }
+
+    .tab-badge {
+      margin-left: auto;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.5);
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 99px;
+      min-width: 20px;
+      text-align: center;
+      font-family: var(--mono);
+    }
+
+    .tab.active .tab-badge {
+      background: rgba(99,102,241,0.3);
+      color: #A5B4FC;
+    }
+
+    .tab-badge.amber {
+      background: rgba(245,158,11,0.25);
+      color: #FCD34D;
+    }
+
+    .sidebar-sep {
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+      margin: 10px 4px;
+    }
+
+    /* sync info in sidebar */
+    .sync-info {
+      margin-top: auto;
+      padding: 12px;
+      background: rgba(255,255,255,0.04);
+      border-radius: var(--r8);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .sync-info-label {
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .sync-info-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sync-info-item {
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.4);
+      line-height: 1.4;
+    }
+
+    .sync-info-item strong {
+      color: rgba(255,255,255,0.7);
+      font-weight: 600;
+      display: block;
+      font-family: var(--mono);
+      font-size: 11px;
+      word-break: break-all;
+    }
+
+    /* ══════════════════════════════════════════
+       MAIN CONTENT
+    ══════════════════════════════════════════ */
+    .main {
+      overflow-y: auto;
+      background: var(--bg);
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; animation: panelIn 180ms cubic-bezier(0.16,1,0.3,1); }
+
+    @keyframes panelIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .page-header {
+      padding: 28px 28px 0;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .page-header-left h1 {
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text-1);
+      margin-bottom: 3px;
+      line-height: 1.2;
+    }
+
+    .page-header-left p {
+      font-size: 13px;
+      color: var(--text-3);
+      font-weight: 400;
+    }
+
+    .page-body {
+      padding: 0 28px 48px;
+    }
+
+    /* ══════════════════════════════════════════
+       BUTTONS
+    ══════════════════════════════════════════ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 14px;
+      height: 34px;
+      border-radius: var(--r8);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s cubic-bezier(0.16,1,0.3,1);
+      white-space: nowrap;
+      letter-spacing: -0.01em;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 1px 3px rgba(79,70,229,0.35), 0 0 0 1px rgba(79,70,229,0.1);
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 14px rgba(79,70,229,0.45), 0 0 0 1px rgba(79,70,229,0.15);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(79,70,229,0.25); }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text-2);
+      border: 1px solid var(--border-2);
+      box-shadow: var(--shadow-xs);
+    }
+    .btn-secondary:hover {
+      background: var(--surface-2);
+      color: var(--text-1);
+      border-color: var(--border-3);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-3);
+      border: 1px solid transparent;
+    }
+    .btn-ghost:hover {
+      background: var(--surface-3);
+      color: var(--text-2);
+      border-color: var(--border);
+    }
+
+    .btn-danger {
+      background: var(--red-light);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+    .btn-danger:hover { background: var(--red); color: white; }
+
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+    /* Legacy button compat for JS-rendered HTML */
+    button.secondary {
+      background: var(--surface);
+      color: var(--text-2);
+      border: 1px solid var(--border-2);
+      box-shadow: var(--shadow-xs);
+      border-radius: var(--r6);
+      padding: 0 10px;
+      height: 30px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+    button.secondary:hover { background: var(--surface-2); color: var(--text-1); border-color: var(--border-3); }
+
+    button.danger {
+      background: var(--red);
+      color: white;
+      border: none;
+      border-radius: var(--r6);
+      padding: 0 12px;
+      height: 30px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button[type="button"]:not(.secondary):not(.danger):not(.tab):not(.sub-tab):not(.btn):not([class*="sku-"]) {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--r8);
+      padding: 0 14px;
+      height: 34px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+      box-shadow: 0 1px 3px rgba(79,70,229,0.3);
+    }
+    button[type="button"]:not(.secondary):not(.danger):not(.tab):not(.sub-tab):not(.btn):not([class*="sku-"]):hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(79,70,229,0.4);
+    }
+    button[type="button"]:not(.secondary):not(.danger):not(.tab):not(.sub-tab):not(.btn):not([class*="sku-"]):disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    a.inline-link {
+      color: var(--primary);
+      font-size: 12.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: opacity 0.12s;
+    }
+    a.inline-link:hover { opacity: 0.75; text-decoration: underline; text-underline-offset: 2px; }
+
+    /* ══════════════════════════════════════════
+       KPI / METRIC CARDS  (both .kpi-card and .metric-card)
+    ══════════════════════════════════════════ */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    /* JS renders .metric-card */
+    .metric-card,
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r12);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: var(--shadow-xs);
+      transition: box-shadow 0.2s, transform 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::before,
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--border);
+      border-radius: var(--r12) var(--r12) 0 0;
+    }
+
+    .metric-card:hover,
+    .kpi-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .metric-label,
+    .kpi-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .kpi-top { display: flex; align-items: center; justify-content: space-between; }
+
+    .kpi-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .metric-value,
+    .kpi-value {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      margin: 4px 0 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-note,
+    .kpi-sub {
+      font-size: 11.5px;
+      color: var(--text-3);
+      font-weight: 500;
+    }
+
+    /* Color variants */
+    .metric-card.wait::before,
+    .kpi-card.wait::before    { background: linear-gradient(90deg, var(--amber), transparent); }
+    .metric-card.wait .metric-value,
+    .kpi-card.wait .kpi-value { color: var(--amber); }
+    .kpi-card.wait .kpi-dot   { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,0.5); }
+
+    .metric-card.stock::before,
+    .kpi-card.stock::before    { background: linear-gradient(90deg, var(--red), transparent); }
+    .metric-card.stock .metric-value,
+    .kpi-card.stock .kpi-value { color: var(--red); }
+    .kpi-card.stock .kpi-dot   { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+
+    .metric-card.complete::before,
+    .kpi-card.complete::before    { background: linear-gradient(90deg, var(--green), transparent); }
+    .metric-card.complete .metric-value,
+    .kpi-card.complete .kpi-value { color: var(--green); }
+    .kpi-card.complete .kpi-dot   { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+
+    .metric-card.closed::before,
+    .kpi-card.closed::before    { background: linear-gradient(90deg, var(--text-3), transparent); }
+    .metric-card.closed .metric-value,
+    .kpi-card.closed .kpi-value { color: var(--text-3); }
+    .kpi-card.closed .kpi-dot  { background: var(--text-3); }
+
+    .metric-card.amber-bg { border-color: rgba(245,158,11,0.2); background: linear-gradient(135deg, var(--surface) 60%, rgba(245,158,11,0.04)); }
+
+    /* ══════════════════════════════════════════
+       CARD SURFACE
+    ══════════════════════════════════════════ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r16);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .card-header {
+      padding: 18px 20px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.2px;
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 2px;
+    }
+
+    .card-body { padding: 16px 20px 20px; }
+
+    /* ══════════════════════════════════════════
+       SEGMENT CONTROL (sub-tabs)
+    ══════════════════════════════════════════ */
+    .segment {
+      display: inline-flex;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: var(--r10);
+      padding: 3px;
+      gap: 2px;
+      margin-bottom: 16px;
+    }
+
+    .sub-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: var(--r8);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-3);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: all 0.15s;
+    }
+
+    .sub-tab:hover { color: var(--text-2); background: rgba(0,0,0,0.04); }
+
+    .sub-tab.active {
+      background: var(--surface);
+      color: var(--text-1);
+      font-weight: 600;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+    }
+
+    .sub-tab-count {
+      font-size: 10.5px;
+      font-weight: 700;
+      background: var(--surface-4);
+      color: var(--text-3);
+      padding: 1px 6px;
+      border-radius: 99px;
+      min-width: 18px;
+      text-align: center;
+      font-family: var(--mono);
+    }
+
+    .sub-tab.active .sub-tab-count {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .sub-panel { display: none; }
+    .sub-panel.active { display: block; animation: panelIn 160ms ease; }
+
+    /* ══════════════════════════════════════════
+       ROW CARDS (deliver items)
+    ══════════════════════════════════════════ */
+    .row-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .row-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r12);
+      padding: 14px 16px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .row-card:hover {
+      border-color: var(--border-2);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .row-card.out-of-stock {
+      border-left: 3px solid var(--red);
+      background: linear-gradient(135deg, var(--surface) 0%, rgba(239,68,68,0.02) 100%);
+    }
+
+    .row-card.overdue {
+      border-left: 3px solid var(--amber);
+    }
+
+    .row-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      margin-bottom: 0;
+    }
+    .row-head:hover .collapse-arrow { opacity: 1; }
+
+    .row-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.2px;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px 14px;
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    .meta span { display: flex; align-items: center; gap: 4px; }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .overdue-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--amber);
+      background: var(--amber-light);
+      border: 1px solid rgba(245,158,11,0.2);
+      padding: 1px 7px;
+      border-radius: 99px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* ══════════════════════════════════════════
+       BADGES
+    ══════════════════════════════════════════ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge.wait   { color: #92400E; background: var(--amber-light);  border-color: rgba(245,158,11,0.2); }
+    .badge.stock  { color: #991B1B; background: var(--red-light);    border-color: rgba(239,68,68,0.2); }
+    .badge.ready  { color: #065F46; background: var(--green-light);  border-color: rgba(16,185,129,0.2); }
+    .badge.pr     { color: #5B21B6; background: var(--violet-light); border-color: rgba(139,92,246,0.2); }
+    .badge.muted  { color: var(--text-3); background: var(--surface-3); border-color: var(--border); }
+
+    /* ══════════════════════════════════════════
+       FACT GRID
+    ══════════════════════════════════════════ */
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7px;
+      margin-bottom: 12px;
+    }
+
+    .fact {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r8);
+      padding: 9px 12px;
+    }
+
+    .fact-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 3px;
+    }
+
+    .fact-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-1);
+      line-height: 1.35;
+    }
+
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-top: 4px;
+    }
+
+    /* ══════════════════════════════════════════
+       CARD COLLAPSE
+    ══════════════════════════════════════════ */
+    .collapse-arrow {
+      flex-shrink: 0;
+      font-size: 10px;
+      color: var(--text-3);
+      opacity: 0.4;
+      margin-left: 4px;
+      transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), opacity 0.15s;
+      line-height: 1;
+      margin-top: 4px;
+    }
+    .row-card.expanded .collapse-arrow { transform: rotate(180deg); opacity: 0.8; }
+
+    .row-card-body {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.28s cubic-bezier(0.16,1,0.3,1), opacity 0.22s ease, margin-top 0.22s ease;
+      margin-top: 0;
+    }
+    .row-card.expanded .row-card-body {
+      max-height: 800px;
+      opacity: 1;
+      margin-top: 14px;
+    }
+
+    /* ══════════════════════════════════════════
+       SECTION GROUP HEADERS
+    ══════════════════════════════════════════ */
+    .section-group-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--r6);
+      margin-bottom: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      border: 1px solid transparent;
+    }
+
+    .section-group-header.proxy      { background: var(--primary-light); border-color: rgba(79,70,229,0.15); color: var(--primary); }
+    .section-group-header.collective { background: var(--green-light);   border-color: rgba(16,185,129,0.15);  color: var(--green); }
+    .section-group-header.vcc        { background: var(--violet-light);  border-color: rgba(139,92,246,0.15);  color: var(--violet); }
+    .section-group-count { margin-left: auto; font-size: 11px; opacity: 0.7; }
+
+    /* ══════════════════════════════════════════
+       SNAPSHOT SUMMARY CARDS
+    ══════════════════════════════════════════ */
+    .summary-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r12);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-xs);
+      transition: box-shadow 0.15s, transform 0.15s;
+    }
+
+    .summary-card:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+
+    .summary-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+
+    .summary-head h3 {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-2);
+      line-height: 1.4;
+    }
+
+    .small { font-size: 12px; color: var(--text-3); line-height: 1.6; }
+
+    /* ══════════════════════════════════════════
+       TABLE
+    ══════════════════════════════════════════ */
+    .table-toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .table-toolbar input  { flex: 1 1 220px; }
+    .table-toolbar select { flex: 0 0 160px; }
+
+    input, select, textarea {
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      border-radius: var(--r8);
+      color: var(--text-1);
+      padding: 0 12px;
+      height: 34px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+    }
+
+    textarea {
+      height: auto;
+      min-height: 180px;
+      padding: 10px 12px;
+      resize: vertical;
+      line-height: 1.6;
+      font-family: var(--mono);
+      font-size: 12.5px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+    }
+
+    input::placeholder { color: var(--text-3); }
+    select option { background: white; color: var(--text-1); }
+
+    .table-shell {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r12);
+      overflow: hidden;
+      box-shadow: var(--shadow-xs);
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    th {
+      background: var(--surface-2);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-1);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    tr:hover td { background: var(--bg); }
+    td strong { font-weight: 600; }
+
+    /* ══════════════════════════════════════════
+       GUIDE GRID
+    ══════════════════════════════════════════ */
+    .rule-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .rule-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r12);
+      padding: 20px;
+      box-shadow: var(--shadow-xs);
+      transition: box-shadow 0.15s;
+    }
+
+    .rule-card:hover { box-shadow: var(--shadow-md); }
+
+    .rule-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: 8px;
+      letter-spacing: -0.2px;
+    }
+
+    .rule-card p {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.65;
+    }
+
+    .rule-card ol {
+      margin-top: 10px;
+      padding-left: 18px;
+      font-size: 12.5px;
+      color: var(--text-2);
+      line-height: 1.8;
+    }
+
+    /* ══════════════════════════════════════════
+       NOTICE BAR
+    ══════════════════════════════════════════ */
+    .notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: var(--amber-light);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: var(--r8);
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text-2);
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .notice::before {
+      content: '⚡';
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .notice strong { color: #92400E; font-weight: 600; }
+
+    /* ══════════════════════════════════════════
+       EMPTY STATE
+    ══════════════════════════════════════════ */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-3);
+      font-size: 13px;
+      background: var(--surface-2);
+      border-radius: var(--r10);
+      border: 1px dashed var(--border-2);
+    }
+
+    .empty-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.6; }
+    .empty-text { font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+    .empty-sub  { font-size: 12px; color: var(--text-3); }
+
+    /* ══════════════════════════════════════════
+       FLASH TOAST
+    ══════════════════════════════════════════ */
+    .flash {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      max-width: 340px;
+      padding: 12px 16px;
+      background: var(--text-1);
+      color: var(--surface);
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--r10);
+      box-shadow: var(--shadow-xl);
+      display: none;
+      z-index: 9999;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .flash.show { display: block; animation: toastIn 0.2s cubic-bezier(0.16,1,0.3,1); }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ══════════════════════════════════════════
+       MODAL
+    ══════════════════════════════════════════ */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 100;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .modal.open { display: flex; }
+
+    .modal-card {
+      width: min(880px, calc(100vw - 32px));
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r20);
+      padding: 28px;
+      box-shadow: var(--shadow-xl);
+      animation: modalIn 0.22s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.96) translateY(10px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-copy {
+      margin: 6px 0 18px;
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.65;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    .section-copy {
+      font-size: 13px;
+      color: var(--text-3);
+      margin-top: 4px;
+    }
+
+    .code-block {
+      background: #0D1117;
+      color: #79C0FF;
+      border-radius: var(--r8);
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.7;
+      overflow-x: auto;
+      margin-top: 12px;
+      white-space: pre;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* ══════════════════════════════════════════
+       STATUS LINE
+    ══════════════════════════════════════════ */
+    #fetchStatus {
+      font-size: 12.5px;
+      color: var(--text-3);
+      margin-top: 8px;
+      display: none;
+      font-family: var(--mono);
+      background: var(--surface-2);
+      padding: 8px 12px;
+      border-radius: var(--r6);
+      border: 1px solid var(--border);
+    }
+
+    /* ══════════════════════════════════════════
+       SCROLLBAR
+    ══════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+    /* Sidebar scrollbar */
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+    /* ══════════════════════════════════════════
+       SKU PANEL
+    ══════════════════════════════════════════ */
+    .sku-panel-desc { color: var(--text-2); font-size: 13px; margin-bottom: 20px; }
+    .sku-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .sku-toolbar .sku-toolbar-right { margin-left: auto; display: flex; gap: 8px; }
+
+    .sku-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--r10);
+      background: var(--surface);
+      box-shadow: var(--shadow-xs);
+    }
+    .sku-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .sku-table thead th {
+      background: var(--surface-2);
+      color: var(--text-2);
+      font-weight: 600;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .sku-table thead th.required::after { content: ' *'; color: var(--red); }
+    .sku-table tbody tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+    .sku-table tbody tr:hover td { background: var(--bg); }
+    .sku-table td { padding: 7px 8px; vertical-align: middle; }
+    .sku-table td input, .sku-table td select {
+      width: 100%;
+      min-width: 0;
+      padding: 5px 9px;
+      border: 1px solid var(--border-2);
+      border-radius: var(--r6);
+      background: var(--surface);
+      color: var(--text-1);
+      font-size: 13px;
+      outline: none;
+      box-sizing: border-box;
+      height: 30px;
+    }
+    .sku-table td input:focus, .sku-table td select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-mid);
+    }
+    .sku-table td.sku-del-col { width: 36px; text-align: center; }
+    .sku-del-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-3);
+      font-size: 15px;
+      padding: 2px 6px;
+      border-radius: var(--r4);
+      line-height: 1;
+      transition: color 0.12s, background 0.12s;
+    }
+    .sku-del-btn:hover { color: var(--red); background: var(--red-light); }
+
+    .sku-presets {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+      align-items: center;
+    }
+    .sku-presets-label { font-size: 12px; color: var(--text-3); }
+    .sku-preset-btn {
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 12px;
+      border: 1px solid var(--border-2);
+      background: var(--surface);
+      color: var(--text-2);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.12s;
+    }
+    .sku-preset-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+    .sku-result {
+      margin-top: 20px;
+      padding: 18px;
+      background: var(--green-light);
+      border-radius: var(--r10);
+      border: 1px solid rgba(16,185,129,0.2);
+      display: none;
+    }
+    .sku-result.show { display: block; animation: panelIn 200ms ease; }
+    .sku-result-title { font-weight: 700; margin-bottom: 10px; font-size: 14px; color: #065F46; }
+    .sku-result-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .sku-result-list { font-size: 13px; color: var(--text-2); }
+    .sku-result-list li { padding: 3px 0; }
+
+    .sku-parse-area {
+      background: var(--surface);
+      border: 1.5px dashed var(--border-2);
+      border-radius: var(--r12);
+      padding: 18px;
+      margin-bottom: 16px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .sku-parse-area.dragover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .sku-parse-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .sku-parse-title { font-weight: 700; font-size: 14px; letter-spacing: -0.2px; }
+    .sku-parse-badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: linear-gradient(135deg, var(--primary), var(--violet));
+      color: white;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .sku-parse-textarea {
+      width: 100%;
+      min-height: 90px;
+      box-sizing: border-box;
+      padding: 10px 12px;
+      border: 1px solid var(--border-2);
+      border-radius: var(--r8);
+      background: var(--surface-2);
+      color: var(--text-1);
+      font-size: 13px;
+      resize: vertical;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .sku-parse-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-mid); }
+    .sku-parse-textarea::placeholder { color: var(--text-3); }
+    .sku-parse-footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    .sku-parse-hint { font-size: 12px; color: var(--text-3); flex: 1; }
+
+    .sku-table tbody tr.suggested td { background: rgba(79,70,229,0.03); }
+    .sku-table tbody tr.suggested td input,
+    .sku-table tbody tr.suggested td select { border-color: rgba(79,70,229,0.3); }
+    .sku-suggest-note {
+      font-size: 11px;
+      color: var(--text-3);
+      padding: 2px 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+
+    .sku-parse-loading { display: none; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+    .sku-parse-loading.show { display: flex; }
+    .sku-spin {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border-2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════ */
+    @media (max-width: 960px) {
+      .shell { grid-template-columns: 1fr; }
+      .topbar-brand { width: auto; }
+      .sidebar { display: none; }
+      .page-header, .page-body { padding-left: 18px; padding-right: 18px; }
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
+      .summary-list { grid-template-columns: 1fr; }
+      .rule-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ══════════════════════════════════════════
+       TOPBAR SEARCH (decorative)
+    ══════════════════════════════════════════ */
+    .topbar-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r8);
+      padding: 0 12px;
+      height: 32px;
+      min-width: 220px;
+      cursor: text;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .topbar-search:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-mid);
+    }
+    .topbar-search input {
+      border: none;
+      background: transparent;
+      height: auto;
+      font-size: 13px;
+      color: var(--text-1);
+      width: 160px;
+      padding: 0;
+    }
+    .topbar-search input:focus { box-shadow: none; }
+    .topbar-search-icon { color: var(--text-3); flex-shrink: 0; }
+    .topbar-kbd {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--text-3);
+      background: var(--surface-3);
+      border: 1px solid var(--border-2);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: var(--mono);
+    }
+
+    /* Avatar / user badge in topbar */
+    .topbar-user {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--violet));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    /* ══════════════════════════════════════════
+       STATUS DOTS (for topbar)
+    ══════════════════════════════════════════ */
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── TOP BAR ── -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-icon">S</div>
+      <div>
+        <div class="brand-name">SAM</div>
+        <div class="brand-tagline">SOFTWARE ASSET MGR</div>
+      </div>
+    </div>
+
+    <div class="topbar-center">
+      <div class="topbar-search">
+        <svg class="topbar-search-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+        <input placeholder="快速搜索…" readonly tabindex="-1">
+        <span class="topbar-kbd">⌘K</span>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <button type="button" id="fetchLive" class="btn btn-primary">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm.75 3.5v3.25l2.5 1.5-.75 1.25-3-1.75V4.5h1.25z"/></svg>
+        拉取最新数据
+      </button>
+      <button type="button" id="openImport" class="btn btn-secondary">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1v9M5 7l3 3 3-3M3 13h10"/></svg>
+        导入 JSON
+      </button>
+      <button type="button" id="refreshSnapshot" class="btn btn-ghost">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.65 2.35A8 8 0 102 14h2a6 6 0 11.94-8.94L3 7h4V3L5.06 4.94A6 6 0 0113.65 2.35z"/></svg>
+      </button>
+      <button type="button" id="showAutoSync" class="btn btn-ghost">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v4M8 11v.5"/></svg>
+      </button>
+      <div class="topbar-user" title="当前用户">A</div>
+    </div>
+  </header>
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-section-label">工作区</div>
+
+    <button class="tab active" data-tab="todo">
+      <svg class="tab-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="14" height="14" rx="3"/><path d="M5 9l3 3 5-5"/></svg>
+      今日待办
+      <span class="tab-badge" id="badgeTodo">–</span>
+    </button>
+
+    <button class="tab" data-tab="details">
+      <svg class="tab-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5h12M3 9h12M3 13h7"/></svg>
+      发放明细
+    </button>
+
+    <button class="tab" data-tab="summary">
+      <svg class="tab-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 14V8M7 14V5M11 14V9M15 14V3"/></svg>
+      软件聚合
+    </button>
+
+    <button class="tab" data-tab="sku">
+      <svg class="tab-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="14" height="3" rx="1.5"/><rect x="2" y="8" width="14" height="3" rx="1.5"/><rect x="2" y="13" width="8" height="2" rx="1"/></svg>
+      创建 SKU
+    </button>
+
+    <button class="tab" data-tab="guide">
+      <svg class="tab-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="7"/><path d="M9 8v5M9 6v.01"/></svg>
+      接口说明
+    </button>
+
+    <div class="sidebar-sep"></div>
+
+    <div class="sync-info">
+      <div class="sync-info-label">数据快照</div>
+      <div class="sync-info-row">
+        <div class="sync-info-item">最后更新<strong id="lastImportedAt">–</strong></div>
+        <div class="sync-info-item">存储模式<strong id="storageMode">检测中</strong></div>
+        <div class="sync-info-item">快照范围<strong id="snapshotScope">–</strong></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- ── TAB: 今日待办 ── -->
+    <section class="panel active" data-panel="todo">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>今日待办</h1>
+          <p>按发放单分类整理，优先处理缺货与未挂 PR 的条目</p>
+        </div>
+      </div>
+      <div class="page-body">
+        <div id="fetchStatus"></div>
+        <div class="notice" id="mainNotice">
+          <strong>提示：</strong>点击「拉取最新数据」需本机已启动代理（端口 9003）；或在已登录的 SAM 页面 Console 里运行导出脚本推送数据。
+        </div>
+
+        <!-- KPI -->
+        <div class="kpi-row" id="metrics"></div>
+
+        <!-- 分类子面板 -->
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-header">
+            <div>
+              <div class="card-title">待发放清单</div>
+              <div class="card-subtitle">按采购路径分组 · 代采 / 集采 / VCC 直付</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="segment" id="todoSubTabs">
+              <button class="sub-tab active" data-sub="proxy">🔄 代采 <span class="sub-tab-count" id="countProxy">0</span></button>
+              <button class="sub-tab" data-sub="collective">📦 集采 <span class="sub-tab-count" id="countCollective">0</span></button>
+              <button class="sub-tab" data-sub="vcc">💳 VCC <span class="sub-tab-count" id="countVcc">0</span></button>
+            </div>
+            <div class="sub-panel active" id="subProxy"><div class="row-list" id="listProxy"></div></div>
+            <div class="sub-panel"        id="subCollective"><div class="row-list" id="listCollective"></div></div>
+            <div class="sub-panel"        id="subVcc"><div class="row-list" id="listVcc"></div></div>
+          </div>
+        </div>
+
+        <!-- 快照摘要 -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">快照摘要</div>
+              <div class="card-subtitle">直接来自 SAM deliver/page 的返回字段，无二次推算</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="summary-list" id="snapshotSummary"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TAB: 发放明细 ── -->
+    <section class="panel" data-panel="details">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>发放明细</h1>
+          <p>全量明细表，支持按单号、软件名、人名、库存状态筛选</p>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="table-toolbar">
+          <input id="detailSearch" placeholder="搜索发放单号 / 申请单号 / 软件名 / 人名" />
+          <select id="detailStockFilter">
+            <option value="all">全部库存状态</option>
+            <option value="stock">仅缺货</option>
+            <option value="ready">仅有货</option>
+          </select>
+          <select id="detailPrFilter">
+            <option value="all">全部 PR 状态</option>
+            <option value="with-pr">已关联 PR</option>
+            <option value="without-pr">未关联 PR</option>
+          </select>
+        </div>
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>发放单 / 申请单</th>
+                <th>软件</th>
+                <th>申请人 / 领用人</th>
+                <th>库存 / PR</th>
+                <th>时长</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="detailsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TAB: 软件聚合 ── -->
+    <section class="panel" data-panel="summary">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>软件聚合</h1>
+          <p>按 SKU 汇总，快速掌握哪款软件排队最多、缺货最严重</p>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="row-list" id="softwareSummary"></div>
+      </div>
+    </section>
+
+    <!-- ── TAB: 创建 SKU ── -->
+    <section class="panel" data-panel="sku">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>创建 SKU</h1>
+          <p>批量录入软件信息，生成可直接上传 FMS「导入更新」的 Excel 文件</p>
+        </div>
+      </div>
+      <div class="page-body">
+
+        <!-- 智能解析区 -->
+        <div class="sku-parse-area" id="skuParseArea">
+          <div class="sku-parse-header">
+            <span class="sku-parse-title">✨ 智能填充</span>
+            <span class="sku-parse-badge">AI</span>
+          </div>
+          <textarea class="sku-parse-textarea" id="skuParseInput"
+            placeholder="粘贴软件名称、报价单文字、表格内容，或直接描述需求，例如：
+Figma Professional 年订阅，$144/人
+汉仪字库 汉仪汉黑 永久授权 ¥30000
+Cursor Enterprise，Anysphere，按席位年费"></textarea>
+          <div class="sku-parse-footer">
+            <span class="sku-parse-hint">支持粘贴任意格式文字、表格复制内容；AI 自动识别字段，结果可逐行修改</span>
+            <div class="sku-parse-loading" id="skuParseLoading">
+              <div class="sku-spin"></div> AI 识别中…
+            </div>
+            <button class="btn btn-primary" id="skuParseBtn">识别并填入表格</button>
+          </div>
+          <div id="skuParseStatus" style="margin-top:8px;font-size:13px;min-height:18px;color:var(--text-3);"></div>
+        </div>
+
+        <!-- 预设快填 -->
+        <div class="sku-presets">
+          <span class="sku-presets-label">快填预设：</span>
+          <button class="sku-preset-btn" data-preset="domestic">国内字体（CNY·永久授权）</button>
+          <button class="sku-preset-btn" data-preset="overseas">海外字体（USD·订阅）</button>
+          <button class="sku-preset-btn" data-preset="saas">SaaS 软件（CNY·年订阅）</button>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="sku-toolbar">
+          <button class="btn btn-secondary" id="skuAddRow">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a1 1 0 011 1v4h4a1 1 0 010 2H9v4a1 1 0 01-2 0V9H3a1 1 0 010-2h4V3a1 1 0 011-1z"/></svg>
+            新增一行
+          </button>
+          <button class="btn btn-ghost" id="skuClearAll">清空</button>
+          <div class="sku-toolbar-right">
+            <button class="btn btn-primary" id="skuGenerate">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm3 1v2H3v1h2v2h1V8h2V7H6V5H5zm5 0v6h1V5h-1z"/></svg>
+              生成 Excel
+            </button>
+          </div>
+        </div>
+
+        <!-- 录入表格 -->
+        <div class="sku-table-wrap">
+          <table class="sku-table">
+            <thead>
+              <tr>
+                <th class="required" style="min-width:220px">软件名称</th>
+                <th class="required" style="min-width:200px">版本 / 授权类型</th>
+                <th class="required" style="min-width:180px">厂商</th>
+                <th class="required" style="min-width:110px">预估单价</th>
+                <th style="min-width:80px">币种</th>
+                <th style="min-width:80px">汇率基准国</th>
+                <th style="min-width:120px;max-width:140px">说明</th>
+                <th style="width:36px"></th>
+              </tr>
+            </thead>
+            <tbody id="skuTableBody">
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 生成结果 -->
+        <div class="sku-result" id="skuResult">
+          <div class="sku-result-title">✅ 生成成功</div>
+          <ul class="sku-result-list" id="skuResultList"></ul>
+          <div class="sku-result-actions">
+            <button class="btn btn-primary" id="skuDownload">⬇ 下载 Excel</button>
+            <button class="btn btn-secondary" id="skuUploadFms">🚀 上传到 FMS</button>
+          </div>
+          <div id="skuUploadStatus" style="margin-top:10px;font-size:13px;color:var(--text-2)"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── TAB: 接口说明 ── -->
+    <section class="panel" data-panel="guide">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>接口说明</h1>
+          <p>已确认的 SAM 接口信息与字段语义，供后续抓包参考</p>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="rule-grid" id="guideGrid"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── 导入弹窗 ── -->
+<div class="modal" id="importModal">
+  <div class="modal-card">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">导入 SAM Response JSON</h2>
+        <p class="modal-copy">
+          把 DevTools Response 面板里的完整 JSON 粘贴进来，或粘贴浏览器 Console 导出的快照 JSON。
+          保存后写入共享快照，团队成员刷新即可同步。
+        </p>
+      </div>
+      <button type="button" class="btn btn-ghost" id="closeImport" style="flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M12.7 4.7l-1.4-1.4L8 6.6 4.7 3.3 3.3 4.7 6.6 8l-3.3 3.3 1.4 1.4L8 9.4l3.3 3.3 1.4-1.4L9.4 8z"/></svg>
+        关闭
+      </button>
+    </div>
+    <textarea id="importInput" placeholder="把 Response JSON 粘贴到这里"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <button type="button" id="saveImport" class="btn btn-primary">覆盖更新共享快照</button>
+      <button type="button" class="btn btn-ghost" id="loadSeed">清空旧快照</button>
+    </div>
+    <div class="code-block" id="payloadBlock"></div>
+    <div class="code-block" id="syncHelperBlock"></div>
+  </div>
+</div>
+
+<!-- ── PR 提单弹窗 ── -->
+<div class="modal" id="prModal">
+  <div class="modal-card" style="width:min(620px,calc(100vw - 32px));">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">提需求单 PR</h2>
+        <p class="modal-copy" id="prModalDesc">根据发放单信息自动填写并提交采购需求单。</p>
+      </div>
+      <button type="button" class="btn btn-ghost" id="closePrModal" style="flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M12.7 4.7l-1.4-1.4L8 6.6 4.7 3.3 3.3 4.7 6.6 8l-3.3 3.3 1.4 1.4L8 9.4l3.3 3.3 1.4-1.4L9.4 8z"/></svg>
+        关闭
+      </button>
+    </div>
+    <div id="prFormPreview" style="display:grid;gap:8px;margin-bottom:16px;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div>
+        <div class="fact-label" style="margin-bottom:6px;">采购性质</div>
+        <select id="prPurchaseType">
+          <option value="account_add">账号新增（1 个月）</option>
+          <option value="account_renewal">账号续费（仅续费）</option>
+        </select>
+      </div>
+      <div>
+        <div class="fact-label" style="margin-bottom:6px;">订阅期限（月）</div>
+        <input type="number" id="prMonths" value="1" min="1" max="36" />
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="fact-label" style="margin-bottom:6px;">受益部门路径</div>
+      <input type="text" id="prBenefitDept" placeholder="例：米哈游>崩坏：星穹铁道>程序组>引擎组" />
+    </div>
+    <div id="prStatus" style="font-size:12.5px;color:var(--text-3);margin-bottom:12px;display:none;font-family:var(--mono);"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" id="prSubmitBtn" class="btn btn-primary">🚀 创建草稿并打开编辑页</button>
+      <button type="button" class="btn btn-ghost" id="prDraftBtn" style="display:none">暂存草稿</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="flash" id="flash"></div>
+
+<script type="module">
+    const STORAGE_KEY = "sam-distribution-snapshot-v1";
+    const SYNC_MESSAGE_TYPES = {
+      ready: "sam-board-ready",
+      import: "sam-board-import",
+      ack: "sam-board-ack",
+    };
+
+    const API_INFO = {
+      endpoint: "https://api.agw.mihoyo.com/neone-sam-svc/v1/deliver/page",
+      examplePayload: {
+        page: 1,
+        page_size: 100,
+        sku_name: "",
+        deliver_type: "APPLY_DELIVER",
+        tab: "WAIT_DELIVER",
+      },
+    };
+
+    const DEFAULT_SNAPSHOT = {
+      importedAt: "2026-05-13T18:00:00+08:00",
+      source: "SAM Response JSON",
+      scopeLabel: "ChatGPT · 待发放 · page=1 · page_size=100",
+      requestPayload: API_INFO.examplePayload,
+      counts: {
+        totalCount: 103,
+        waitCount: 10,
+        processingCount: 0,
+        completeCount: 61,
+        closedCount: 32,
+        outStockCount: 6,
+      },
+      rows: [
+        { docCode: "DIS202605130008", docRowCode: "DIS202605130008-1", sourceDocCode: "REQ202605080027", sourceDocRowCode: "REQ202605080027-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-13 11:43:31", sourceCreateTime: "2026-05-08 15:35:58", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "廖奕豪", requesterDomain: "yihao.liao", requesterDepartment: "技术策划组", requesterDepartmentFull: "米哈游>崩坏：因缘精灵>策划组>技术策划组", claimUserName: "廖奕豪", claimUserDomain: "yihao.liao", claimUserDepartmentFull: "米哈游>崩坏：因缘精灵>策划组>技术策划组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: false, outOfStockNum: 0, prCode: "", prUrl: "", disabledDeliverFlag: false },
+        { docCode: "DIS202605120034", docRowCode: "DIS202605120034-1", sourceDocCode: "REQ202605120026", sourceDocRowCode: "REQ202605120026-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-12 19:30:40", sourceCreateTime: "2026-05-12 17:09:06", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "耿冲", requesterDomain: "chong.geng", requesterDepartment: "AI技术组", requesterDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组>AI技术组", claimUserName: "耿冲", claimUserDomain: "chong.geng", claimUserDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组>AI技术组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: false, outOfStockNum: 0, prCode: "", prUrl: "", disabledDeliverFlag: false },
+        { docCode: "DIS202605120033", docRowCode: "DIS202605120033-1", sourceDocCode: "REQ202605120023", sourceDocRowCode: "REQ202605120023-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-12 19:30:30", sourceCreateTime: "2026-05-12 16:56:48", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "武云潇", requesterDomain: "yunxiao.wu", requesterDepartment: "引擎组", requesterDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组", claimUserName: "武云潇", claimUserDomain: "yunxiao.wu", claimUserDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: true, outOfStockNum: 1, prCode: "PR260513000041", prUrl: "https://neone.mihoyo.com/procurement/demand-edit/view/PR260513000041", disabledDeliverFlag: false },
+        { docCode: "DIS202605120032", docRowCode: "DIS202605120032-1", sourceDocCode: "REQ202605120022", sourceDocRowCode: "REQ202605120022-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-12 19:30:05", sourceCreateTime: "2026-05-12 16:52:36", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "刘翔", requesterDomain: "xiang.liu05", requesterDepartment: "AI技术组", requesterDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组>AI技术组", claimUserName: "刘翔", claimUserDomain: "xiang.liu05", claimUserDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组>AI技术组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: false, outOfStockNum: 0, prCode: "", prUrl: "", disabledDeliverFlag: false },
+        { docCode: "DIS202605110051", docRowCode: "DIS202605110051-1", sourceDocCode: "REQ202605080047", sourceDocRowCode: "REQ202605080047-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-11 19:46:58", sourceCreateTime: "2026-05-08 18:32:09", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "刘一明", requesterDomain: "yiming.liu02", requesterDepartment: "BP组", requesterDepartmentFull: "米哈游>职能线>人事线>BP组>BP组", claimUserName: "刘德玺", claimUserDomain: "dexi.liu", claimUserDepartmentFull: "米哈游>预研项目>预研KL项目>程序组>客户端组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: true, outOfStockNum: 1, prCode: "PR260512000045", prUrl: "https://neone.mihoyo.com/procurement/demand-edit/view/PR260512000045", disabledDeliverFlag: false },
+        { docCode: "DIS202605110050", docRowCode: "DIS202605110050-1", sourceDocCode: "REQ202605080045", sourceDocRowCode: "REQ202605080045-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-11 19:46:47", sourceCreateTime: "2026-05-08 18:31:43", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "刘一明", requesterDomain: "yiming.liu02", requesterDepartment: "BP组", requesterDepartmentFull: "米哈游>职能线>人事线>BP组>BP组", claimUserName: "李嘉豪", claimUserDomain: "jiahao.li", claimUserDepartmentFull: "米哈游>预研项目>预研KL项目>程序组>客户端组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: true, outOfStockNum: 1, prCode: "PR260512000045", prUrl: "https://neone.mihoyo.com/procurement/demand-edit/view/PR260512000045", disabledDeliverFlag: false },
+        { docCode: "DIS202605090004", docRowCode: "DIS202605090004-1", sourceDocCode: "REQ202605080033", sourceDocRowCode: "REQ202605080033-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-09 11:11:54", sourceCreateTime: "2026-05-08 16:53:51", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "师颖毫", requesterDomain: "yinghao.shi", requesterDepartment: "引擎组", requesterDepartmentFull: "米哈游>崩坏：星穹铁道>程序组>引擎组", claimUserName: "师颖毫", claimUserDomain: "yinghao.shi", claimUserDepartmentFull: "米哈游>崩坏：星穹铁道>程序组>引擎组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: false, outOfStockNum: 0, prCode: "", prUrl: "", disabledDeliverFlag: false },
+        { docCode: "DIS202605080039", docRowCode: "DIS202605080039-1", sourceDocCode: "REQ202605080030", sourceDocRowCode: "REQ202605080030-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-08 19:11:53", sourceCreateTime: "2026-05-08 16:08:27", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "仲唐", requesterDomain: "tang.zhong", requesterDepartment: "引擎组", requesterDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组", claimUserName: "仲唐", claimUserDomain: "tang.zhong", claimUserDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: true, outOfStockNum: 1, prCode: "PR260511000032", prUrl: "https://neone.mihoyo.com/procurement/demand-edit/view/PR260511000032", disabledDeliverFlag: false },
+        { docCode: "DIS202605070033", docRowCode: "DIS202605070033-1", sourceDocCode: "REQ202605070023", sourceDocRowCode: "REQ202605070023-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-07 19:49:20", sourceCreateTime: "2026-05-07 15:19:48", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "梁京京", requesterDomain: "jingjing.liang", requesterDepartment: "任务策划组", requesterDepartmentFull: "米哈游>崩坏：因缘精灵>叙事组>任务策划组", claimUserName: "梁京京", claimUserDomain: "jingjing.liang", claimUserDepartmentFull: "米哈游>崩坏：因缘精灵>叙事组>任务策划组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: true, outOfStockNum: 1, prCode: "PR260508000003", prUrl: "https://neone.mihoyo.com/procurement/demand-edit/view/PR260508000003", disabledDeliverFlag: false },
+        { docCode: "DIS202605060027", docRowCode: "DIS202605060027-1", sourceDocCode: "REQ202605010001", sourceDocRowCode: "REQ202605010001-1", deliverType: "APPLY_DELIVER", deliverTypeDesc: "申请发放", state: "WAIT_DELIVER", stateDesc: "待发放", deliverCreateTime: "2026-05-06 15:53:07", sourceCreateTime: "2026-05-01 11:08:50", skuCode: "SKU00046657", skuName: "ChatGPT", version: "Pro", vendor: "OpenAI", currency: "USD", unitPrice: "200", unitName: "月", requesterName: "仲唐", requesterDomain: "tang.zhong", requesterDepartment: "引擎组", requesterDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组", claimUserName: "仲唐", claimUserDomain: "tang.zhong", claimUserDepartmentFull: "米哈游>崩坏：因缘精灵>程序组>引擎组", hasAuthAccount: true, hasSeat: false, hasCdKey: false, canRecycle: false, stockFlag: true, outOfStockNum: 1, prCode: "PR260508000003", prUrl: "https://neone.mihoyo.com/procurement/demand-edit/view/PR260508000003", disabledDeliverFlag: false }
+      ],
+    };
+
+    const LEGACY_SEED_IMPORTED_AT = "2026-05-13T18:00:00+08:00";
+
+    function createEmptySnapshot() {
+      return {
+        importedAt: "",
+        source: "UNSYNCED",
+        scopeLabel: "",
+        requestPayload: {},
+        counts: {
+          totalCount: 0,
+          waitCount: 0,
+          processingCount: 0,
+          completeCount: 0,
+          closedCount: 0,
+          outStockCount: 0,
+        },
+        rows: [],
+        meta: {
+          empty: true,
+        },
+      };
+    }
+
+    function isLegacySeedSnapshot(snapshot) {
+      return !!snapshot
+        && snapshot.importedAt === LEGACY_SEED_IMPORTED_AT
+        && snapshot.source === "SAM Response JSON"
+        && Array.isArray(snapshot.rows)
+        && snapshot.rows.length === 10
+        && snapshot.rows.every((row) => row.skuName === "ChatGPT");
+    }
+
+    const state = {
+      snapshot: null,
+      activeTab: "todo",
+      storageMode: "检测中",
+      detailSearch: "",
+      detailStockFilter: "all",
+      detailPrFilter: "all",
+      flashTimer: null,
+    };
+
+    const memoryStore = new Map();
+
+    const storageBridge = {
+      async get(key) {
+        if (window.storage && typeof window.storage.get === "function") {
+          try {
+            const result = await window.storage.get(key, true);
+            state.storageMode = "window.storage · shared";
+            return result?.value || null;
+          } catch (error) {
+            state.storageMode = "window.storage 异常，已回退";
+          }
+        }
+        try {
+          const value = window.localStorage.getItem(key);
+          state.storageMode = "localStorage 预览模式";
+          return value;
+        } catch (error) {
+          state.storageMode = "内存兜底";
+          return memoryStore.get(key) || null;
+        }
+      },
+      async set(key, value) {
+        if (window.storage && typeof window.storage.set === "function") {
+          try {
+            await window.storage.set(key, value, true);
+            state.storageMode = "window.storage · shared";
+            return;
+          } catch (error) {
+            state.storageMode = "window.storage 异常，已回退";
+          }
+        }
+        try {
+          window.localStorage.setItem(key, value);
+          state.storageMode = "localStorage 预览模式";
+        } catch (error) {
+          memoryStore.set(key, value);
+          state.storageMode = "内存兜底";
+        }
+      },
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function showFlash(message) {
+      const flash = $("flash");
+      flash.textContent = message;
+      flash.classList.add("show");
+      window.clearTimeout(state.flashTimer);
+      state.flashTimer = window.setTimeout(() => flash.classList.remove("show"), 2600);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatDateTime(value) {
+      if (!value) return "--";
+      const date = new Date(value.replace(" ", "T"));
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat("zh-CN", {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date);
+    }
+
+    function daysSince(value) {
+      if (!value) return null;
+      const target = new Date(value.replace(" ", "T"));
+      if (Number.isNaN(target.getTime())) return null;
+      const diffMs = Date.now() - target.getTime();
+      const totalHours = Math.floor(diffMs / 3600000);
+      if (totalHours < 0) return "0 小时";
+      const days = Math.floor(totalHours / 24);
+      const hours = totalHours % 24;
+      if (days === 0) return `${totalHours} 小时`;
+      if (hours === 0) return `${days} 天`;
+      return `${days} 天 ${hours} 小时`;
+    }
+
+    function normalizeText(value) {
+      return String(value || "").normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+    }
+
+    function toScopeLabel(snapshot) {
+      if (snapshot.scopeLabel) return snapshot.scopeLabel;
+      if (!snapshot.rows.length) return "空快照";
+      const softwareNames = [...new Set(snapshot.rows.map((row) => row.skuName))];
+      return softwareNames.join(" / ");
+    }
+
+    function normalizeSnapshotPayload(payload) {
+      if (payload && Array.isArray(payload.rows) && payload.counts) {
+        return payload;
+      }
+      if (!payload || payload.code !== 0 || !payload.data || !Array.isArray(payload.data.list)) {
+        throw new Error("不是有效的 SAM deliver/page Response JSON。");
+      }
+      return normalizeSamResponse(payload);
+    }
+
+    function toScopeLabelSafe(snapshot) {
+      if (!snapshot) return "未同步";
+      if (snapshot.scopeLabel) return snapshot.scopeLabel;
+      if (!snapshot.rows.length) return snapshot.source === "UNSYNCED" ? "未同步" : "空快照";
+      const softwareNames = [...new Set(snapshot.rows.map((row) => row.skuName))];
+      return softwareNames.join(" / ");
+    }
+
+    function parseRawResponse(rawText) {
+      const payload = JSON.parse(rawText);
+      return normalizeSnapshotPayload(payload);
+    }
+
+    function normalizeSamResponse(payload) {
+      return {
+        importedAt: new Date().toISOString(),
+        source: "SAM Response JSON",
+        scopeLabel: payload.data.list.length
+          ? `${payload.data.list[0].sku_name || "未识别软件"} · ${payload.data.list[0].state_desc || "当前筛选"}`
+          : "SAM 空列表快照",
+        requestPayload: API_INFO.examplePayload,
+        counts: {
+          totalCount: payload.data.total_count ?? payload.data.total ?? payload.data.list.length,
+          waitCount: payload.data.wait_count ?? 0,
+          processingCount: payload.data.processing_count ?? 0,
+          completeCount: payload.data.complete_count ?? 0,
+          closedCount: payload.data.closed_count ?? 0,
+          outStockCount: payload.data.out_stock_count ?? payload.data.list.filter((item) => !!item.stock_flag).length,
+        },
+        rows: payload.data.list.map((item) => ({
+          docCode: item.doc_code,
+          docRowCode: item.doc_row_code,
+          sourceDocCode: item.source_doc_code,
+          sourceDocRowCode: item.source_doc_row_code,
+          deliverType: item.deliver_type,
+          deliverTypeDesc: item.deliver_type_desc,
+          state: item.state,
+          stateDesc: item.state_desc,
+          deliverCreateTime: item.deliver_create_time,
+          sourceCreateTime: item.source_create_time,
+          skuCode: item.sku_code,
+          skuName: item.sku_name,
+          version: item.sw_version,
+          vendor: item.sw_vendor,
+          currency: item.sw_currency,
+          unitPrice: item.sw_unit_price,
+          unitName: item.sw_unit_name,
+          requesterName: item.source_doc_create_by?.name || "",
+          requesterDomain: item.source_doc_create_by?.domain || "",
+          requesterDepartment: item.source_doc_create_by?.department_name || "",
+          requesterDepartmentFull: item.source_doc_create_by?.department_full_name || "",
+          claimUserName: item.claim_user?.name || "",
+          claimUserDomain: item.claim_user?.domain || "",
+          claimUserDepartmentFull: item.claim_user?.department_full_name || "",
+          hasAuthAccount: !!item.has_auth_account,
+          hasSeat: !!item.has_seat,
+          hasCdKey: !!item.has_cd_key,
+          canRecycle: !!item.can_recycle,
+          stockFlag: !!item.stock_flag,
+          outOfStockNum: Number(item.out_of_stock_num || 0),
+          prCode: item.pr_code || "",
+          prUrl: item.pr_jump_url || "",
+          disabledDeliverFlag: !!item.disabled_deliver_flag,
+        })),
+      };
+    }
+
+    async function loadSnapshot() {
+      const raw = await storageBridge.get(STORAGE_KEY);
+      if (!raw) {
+        state.snapshot = DEFAULT_SNAPSHOT;
+        await storageBridge.set(STORAGE_KEY, JSON.stringify(DEFAULT_SNAPSHOT));
+      } else {
+        state.snapshot = JSON.parse(raw);
+      }
+      renderAll();
+    }
+
+    async function loadSnapshotSafe() {
+      // 优先走后端 /api/pending（带缓存），降级到 localStorage
+      try {
+        const resp = await fetch(PROXY_BASE + "/api/pending");
+        if (resp.ok) {
+          const result = await resp.json();
+          if (result.ok && Array.isArray(result.items)) {
+            const items = result.items;
+            const rows = items.map(item => ({
+              docCode:              item.dis_code,
+              docRowCode:           item.dis_code + "-1",
+              sourceDocCode:        item.req_code,
+              sourceDocRowCode:     item.req_code + "-1",
+              deliverType:          "APPLY_DELIVER",
+              deliverTypeDesc:      "申请发放",
+              state:                "WAIT_DELIVER",
+              stateDesc:            "待发放",
+              deliverCreateTime:    item.date + " 00:00:00",
+              sourceCreateTime:     item.date + " 00:00:00",
+              skuCode:              "",
+              skuName:              item.sku_name || "",
+              version:              item.version || "",
+              vendor:               item.vendor || "",
+              currency:             item.currency || "",
+              unitPrice:            item.unit_price || "",
+              unitName:             item.unit_name || "",
+              requesterName:        item.name || "",
+              requesterDomain:      "",
+              requesterDepartment:  item.dept || "",
+              requesterDepartmentFull: item.dept_full || "",
+              claimUserName:        item.claim_user || item.name || "",
+              claimUserDomain:      "",
+              claimUserDepartmentFull: item.dept_full || "",
+              hasAuthAccount:       false,
+              hasSeat:              false,
+              hasCdKey:             false,
+              canRecycle:           false,
+              stockFlag:            item.stock_flag || false,
+              outOfStockNum:        item.stock_count || 0,
+              prCode:               item.pr_code || "",
+              prUrl:                item.pr_code ? `https://neone.mihoyo.com/procurement/demand-edit/view/${item.pr_code}` : "",
+              disabledDeliverFlag:  false,
+              _label:               item.label || "",
+              _note:                item.note || "",
+              _rowCount:            item.row_count || 1,
+            }));
+            state.snapshot = {
+              importedAt:     new Date().toISOString(),
+              source:         "SAM Backend",
+              scopeLabel:     `全量待发放 · ${items.length} 个 REQ`,
+              requestPayload: {},
+              counts: {
+                totalCount:      items.length,
+                waitCount:       items.length,
+                processingCount: 0,
+                completeCount:   0,
+                closedCount:     0,
+                outStockCount:   items.filter(i => i.stock_flag).length,
+              },
+              rows,
+            };
+            renderAll();
+            return;
+          }
+        }
+      } catch (e) {
+        // 后端不可用，降级到 localStorage
+      }
+      // 降级：读 localStorage
+      const raw = await storageBridge.get(STORAGE_KEY);
+      if (!raw) {
+        state.snapshot = createEmptySnapshot();
+      } else {
+        try {
+          const parsed = JSON.parse(raw);
+          if (isLegacySeedSnapshot(parsed)) {
+            state.snapshot = createEmptySnapshot();
+            await storageBridge.set(STORAGE_KEY, JSON.stringify(state.snapshot));
+          } else {
+            state.snapshot = parsed;
+          }
+        } catch (error) {
+          state.snapshot = createEmptySnapshot();
+        }
+      }
+      renderAll();
+    }
+
+    async function saveSnapshot(snapshot) {
+      state.snapshot = snapshot;
+      await storageBridge.set(STORAGE_KEY, JSON.stringify(snapshot));
+      renderAll();
+    }
+
+    async function importSnapshotPayload(payload, sourceLabel) {
+      const snapshot = normalizeSnapshotPayload(payload);
+      const nextSnapshot = {
+        ...snapshot,
+        importedAt: new Date().toISOString(),
+        source: sourceLabel || snapshot.source || "SAM Auto Sync",
+      };
+      await saveSnapshot(nextSnapshot);
+      return nextSnapshot;
+    }
+
+    function filteredRows() {
+      const rows = state.snapshot?.rows || [];
+      const search = normalizeText(state.detailSearch);
+      return rows.filter((row) => {
+        const searchHit = !search || [
+          row.docCode, row.sourceDocCode, row.skuName, row.requesterName, row.claimUserName, row.prCode
+        ].some((item) => normalizeText(item).includes(search));
+        const stockHit = state.detailStockFilter === "all"
+          || (state.detailStockFilter === "stock" && row.stockFlag)
+          || (state.detailStockFilter === "ready" && !row.stockFlag);
+        const prHit = state.detailPrFilter === "all"
+          || (state.detailPrFilter === "with-pr" && row.prCode)
+          || (state.detailPrFilter === "without-pr" && !row.prCode);
+        return searchHit && stockHit && prHit;
+      });
+    }
+
+    function softwareGroups() {
+      const groups = new Map();
+      (state.snapshot?.rows || []).forEach((row) => {
+        const key = row.skuName;
+        if (!groups.has(key)) {
+          groups.set(key, {
+            skuName: row.skuName,
+            vendor: row.vendor,
+            versionSet: new Set(),
+            total: 0,
+            outStock: 0,
+            withPr: 0,
+            latestTime: row.deliverCreateTime,
+            requesters: new Set(),
+          });
+        }
+        const group = groups.get(key);
+        group.total += 1;
+        if (row.stockFlag) group.outStock += 1;
+        if (row.prCode) group.withPr += 1;
+        group.versionSet.add(row.version || "未填版本");
+        group.requesters.add(row.requesterName || "未知");
+        if (row.deliverCreateTime > group.latestTime) group.latestTime = row.deliverCreateTime;
+      });
+      return Array.from(groups.values()).sort((a, b) => b.total - a.total);
+    }
+
+    function renderHeader() {
+      $("lastImportedAt").textContent = formatDateTime(state.snapshot?.importedAt);
+      $("storageMode").textContent = state.storageMode;
+      $("snapshotScope").textContent = toScopeLabel(state.snapshot || DEFAULT_SNAPSHOT);
+      $("payloadBlock").textContent = JSON.stringify(API_INFO.examplePayload, null, 2);
+      $("syncHelperBlock").textContent = [
+        "自动同步方式：",
+        "1. 在已登录的 SAM 页面打开浏览器 Console。",
+        "2. 运行 D:/PRA/sam-distribution-export.js 里的代码。",
+        "3. 脚本会自动打开或复用当前看板页，并把快照直接推送过来。",
+        "4. 如果自动推送失败，脚本也会把快照 JSON 复制到剪贴板作为兜底。",
+      ].join("\\n");
+    }
+
+    function renderHeaderSafe() {
+      $("lastImportedAt").textContent = formatDateTime(state.snapshot?.importedAt);
+      $("storageMode").textContent = state.storageMode;
+      $("snapshotScope").textContent = toScopeLabelSafe(state.snapshot);
+      $("payloadBlock").textContent = JSON.stringify(API_INFO.examplePayload, null, 2);
+      $("syncHelperBlock").textContent = [
+        "自动同步方式：",
+        "1. 在已登录的 SAM 页面打开浏览器 Console。",
+        "2. 运行 D:/PRA/sam-distribution-export.js 里的代码。",
+        "3. 脚本会自动打开或复用当前看板页，并把快照直接推送过来。",
+        "4. 如果自动推送失败，脚本也会把快照 JSON 复制到剪贴板作为兜底。",
+      ].join("\\n");
+      if ($("loadSeed")) {
+        $("loadSeed").textContent = "清空旧快照";
+      }
+      const notice = document.querySelector(".notice");
+      if (notice) {
+        const src = state.snapshot?.source || "";
+        if (src === "UNSYNCED" || !src) {
+          notice.innerHTML = "<strong>提示：</strong> 尚未加载数据。点击右上角「拉取最新数据」从 SAM 同步，或确认 server.py 已启动（端口 9003）。";
+        } else if (src === "SAM Backend") {
+          const ts = state.snapshot?.importedAt ? new Date(state.snapshot.importedAt).toLocaleString("zh-CN") : "";
+          notice.innerHTML = `<strong>✅ 已连接后端：</strong> 数据来自 SAM 后端缓存（约 1 小时刷新一次）。如需立即更新，点击「拉取最新数据」。最后同步：${ts}`;
+          notice.style.background = "#EAF4EE";
+          notice.style.borderColor = "rgba(45,134,83,0.2)";
+        } else {
+          notice.innerHTML = `<strong>数据来源：</strong> ${src}`;
+        }
+      }
+    }
+
+    function renderMetrics() {
+      const counts = state.snapshot.counts;
+      const rows   = state.snapshot.rows || [];
+      const overdueCount = rows.filter(r => {
+        const str = (r.sourceCreateTime || "").trim().replace(" ", "T");
+        const withTz = /[Zz+\-]\d{2}:?\d{2}$/.test(str) ? str : str + "+08:00";
+        const t = new Date(withTz);
+        return !isNaN(t) && (Date.now() - t.getTime()) >= 72 * 3600000;
+      }).length;
+      const noPrCount    = rows.filter(r => !r.prCode).length;
+      const withPrCount  = rows.filter(r => r.prCode).length;
+
+      const metricCards = [
+        { label: "待发放", icon: "🟡", value: counts.waitCount ?? rows.length, note: `其中 ${overdueCount} 个超 3 天`, cls: overdueCount > 0 ? "wait amber-bg" : "wait" },
+        { label: "缺货待处理", icon: "🔴", value: counts.outStockCount ?? 0, note: "已标记库存不足", cls: "stock" },
+        { label: "无 PR", icon: "🟠", value: noPrCount, note: "需要提需求单", cls: noPrCount > 0 ? "stock" : "complete" },
+        { label: "已关联 PR", icon: "🟢", value: withPrCount, note: "已有需求单", cls: "complete" },
+      ];
+      $("metrics").innerHTML = metricCards.map((card) => `
+        <article class="metric-card ${card.cls}">
+          <div class="metric-label">
+            <span>${card.label}</span>
+            <span>${card.icon}</span>
+          </div>
+          <div class="metric-value">${card.value}</div>
+          <div class="metric-note">${card.note}</div>
+        </article>
+      `).join("");
+    }
+
+    function renderRowCard(row) {
+      const label    = row._label || "";
+      const lconf    = LABEL_CONFIG[label] || LABEL_CONFIG[""];
+      const rowCount = row._rowCount || 1;
+      const note     = row._note || "";
+
+      // 超时判断（>3天）
+      const ageHours = (() => {
+        const str = (row.sourceCreateTime || "").trim().replace(" ", "T");
+        const withTz = /[Zz+\-]\d{2}:?\d{2}$/.test(str) ? str : str + "+08:00";
+        const t = new Date(withTz);
+        return isNaN(t) ? 0 : Math.floor((Date.now() - t.getTime()) / 3600000);
+      })();
+      const isOverdue = ageHours >= 72;
+      const cardClass = ["row-card", isOverdue ? "overdue" : "", row.stockFlag ? "out-of-stock" : ""].filter(Boolean).join(" ");
+      const overdueTag = isOverdue ? `<span class="overdue-tag">⚠ 超 ${Math.floor(ageHours/24)} 天</span>` : "";
+
+      // 操作按钮
+      const prBtn = row.prUrl
+        ? `<a class="inline-link" href="${escapeHtml(row.prUrl)}" target="_blank" rel="noreferrer">🔗 打开 PR · ${escapeHtml(row.prCode)}</a>`
+        : `<button type="button" class="secondary" data-create-pr="${escapeHtml(row.docCode)}">📋 提需求单 PR</button>`;
+      const markBtn = (row.stockFlag && !row.prCode)
+        ? `<button type="button" class="secondary" data-mark-pr="${escapeHtml(row.sourceDocCode)}">📦 标记缺货</button>`
+        : "";
+      const deliverBtn = row.prCode
+        ? `<button type="button" data-deliver-pr="${escapeHtml(row.prCode)}" data-deliver-req="${escapeHtml(row.sourceDocCode)}" style="background:var(--green);color:#fff;border:none;padding:6px 14px;border-radius:var(--r6);font-size:13px;cursor:pointer;font-weight:600;">🚀 发放</button>`
+        : "";
+
+      return `
+        <article class="${cardClass}" data-req="${escapeHtml(row.sourceDocCode)}">
+          <div class="row-head" data-collapse-toggle>
+            <div style="flex:1;min-width:0;">
+              <h3 class="row-title">
+                ${escapeHtml(row.sourceDocCode)}
+                · <span style="color:var(--green);font-weight:700;">${escapeHtml(row.skuName)}</span>${(row.version && !row.skuName.includes(row.version.trim())) ? `<span style="color:var(--text-3);font-weight:400;font-size:13px;margin-left:3px;">${escapeHtml(row.version.trim())}</span>` : ""}
+                ${overdueTag}
+              </h3>
+              <div class="meta">
+                <span>申请人：${escapeHtml(row.requesterName)}</span>
+                <span>领用人：${escapeHtml(row.claimUserName || row.requesterName)}</span>
+                ${rowCount > 1 ? `<span style="color:var(--violet);font-weight:600;">${rowCount} 行</span>` : ""}
+                <span style="${isOverdue ? "color:var(--red);font-weight:600;" : ""}">⏱ ${daysSince(row.sourceCreateTime) ?? "--"}</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;flex-shrink:0;align-items:flex-start;">
+              <span class="badge ${row.stockFlag ? "stock" : "ready"}">${row.stockFlag ? `缺货 ${row.outOfStockNum || rowCount}` : "无缺货"}</span>
+              <span class="badge ${row.prCode ? "pr" : "muted"}">${row.prCode ? row.prCode : "无 PR"}</span>
+              <span class="badge" style="color:${lconf.color};background:${lconf.bg};cursor:pointer;border:1px solid transparent;" data-label-req="${escapeHtml(row.sourceDocCode)}" title="点击修改标签">${lconf.text}</span>
+              <span class="collapse-arrow">▼</span>
+            </div>
+          </div>
+          <div class="row-card-body">
+            ${note ? `<div style="font-size:12px;color:var(--text-3);margin:0 0 10px;padding:5px 10px;background:var(--surface-2);border-radius:var(--r6);">${escapeHtml(note)}</div>` : ""}
+            <div class="fact-grid">
+              <div class="fact">
+                <div class="fact-label">部门</div>
+                <div class="fact-value">${escapeHtml(row.requesterDepartment || row.requesterDepartmentFull || "未识别")}</div>
+              </div>
+              <div class="fact">
+                <div class="fact-label">供应信息</div>
+                <div class="fact-value">${escapeHtml(`${row.vendor || "--"} · ${row.currency || ""} ${row.unitPrice || ""} / ${row.unitName || ""}`)}</div>
+              </div>
+              <div class="fact">
+                <div class="fact-label">发放单号</div>
+                <div class="fact-value" style="font-family:var(--mono);font-size:12px;">${escapeHtml(row.docCode)}</div>
+              </div>
+              <div class="fact">
+                <div class="fact-label">创建日期</div>
+                <div class="fact-value">${escapeHtml(row.sourceCreateTime ? row.sourceCreateTime.substring(0,10) : "--")}</div>
+              </div>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="secondary" data-copy="${escapeHtml(row.sourceDocCode)}">复制申请单号</button>
+              <button type="button" class="secondary" data-copy="${escapeHtml(row.docCode)}">复制发放单号</button>
+              ${markBtn}
+              ${deliverBtn}
+              ${prBtn}
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderTodoList() {
+      const rows = [...state.snapshot.rows].sort((a, b) => b.deliverCreateTime.localeCompare(a.deliverCreateTime));
+
+      // 按采购路径分组
+      const groups = { proxy: [], collective: [], vcc: [] };
+      rows.forEach(row => { groups[classifyRow(row)].push(row); });
+
+      // 超时条数（>3天）
+      const overdueCount = rows.filter(r => {
+        const str = (r.sourceCreateTime || "").trim().replace(" ", "T");
+        const withTz = /[Zz+\-]\d{2}:?\d{2}$/.test(str) ? str : str + "+08:00";
+        const t = new Date(withTz);
+        return !isNaN(t) && (Date.now() - t.getTime()) >= 72 * 3600000;
+      }).length;
+
+      // 更新子 tab 条数
+      $("countProxy").textContent      = groups.proxy.length;
+      $("countCollective").textContent = groups.collective.length;
+      $("countVcc").textContent        = groups.vcc.length;
+
+      // 更新侧边栏徽标
+      const badgeTodo = document.getElementById("badgeTodo");
+      if (badgeTodo) {
+        badgeTodo.textContent  = rows.length || "–";
+        badgeTodo.className    = "tab-badge" + (overdueCount > 0 ? " amber" : "");
+      }
+
+      const emptyHtml = (label) => `
+        <div class="empty">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">暂无${label}单据</div>
+          <div class="empty-sub">拉取最新数据后自动显示</div>
+        </div>`;
+
+      [
+        { id: "listProxy",      key: "proxy",      label: "代采" },
+        { id: "listCollective", key: "collective",  label: "集采" },
+        { id: "listVcc",        key: "vcc",         label: "VCC" },
+      ].forEach(({ id, key, label }) => {
+        $(id).innerHTML = groups[key].length
+          ? groups[key].map(r => renderRowCard(r)).join("")
+          : emptyHtml(label);
+      });
+    }
+
+    function renderSnapshotSummary() {
+      const rows = state.snapshot.rows;
+      const withPr = rows.filter((row) => row.prCode).length;
+      const withoutPr = rows.length - withPr;
+      const stockRows = rows.filter((row) => row.stockFlag).length;
+      const summaryItems = [
+        { title: "当前导入页数据量", body: `${rows.length} 条`, note: "当前这份 Response 里真正返回的 list 条数。" },
+        { title: "有 PR 关联", body: `${withPr} 条`, note: "这些记录已经挂上 PR，可直接点开查看采购单。" },
+        { title: "无 PR 关联", body: `${withoutPr} 条`, note: "这部分通常更适合优先确认是否能直接发放。" },
+        { title: "当前页缺货", body: `${stockRows} 条`, note: "这是当前这页 list 中 stock_flag=true 的数量。" },
+        { title: "接口路径", body: "/neone-sam-svc/v1/deliver/page", note: "请求方法是 POST，当前请求参数见导入弹窗底部。" },
+      ];
+      $("snapshotSummary").innerHTML = summaryItems.map((item) => `
+        <article class="summary-card">
+          <div class="summary-head">
+            <h3>${escapeHtml(item.title)}</h3>
+            <span class="badge muted">${escapeHtml(item.body)}</span>
+          </div>
+          <div class="small">${escapeHtml(item.note)}</div>
+        </article>
+      `).join("");
+    }
+
+    function renderDetailsTable() {
+      const rows = filteredRows();
+      $("detailsTable").innerHTML = rows.length ? rows.map((row) => {
+        const age = daysSince(row.sourceCreateTime);
+        const isOverdue = (() => {
+          const str = (row.sourceCreateTime || "").trim().replace(" ", "T");
+          const t = new Date((/[Zz+\-]\d{2}:?\d{2}$/.test(str) ? str : str + "+08:00"));
+          return !isNaN(t) && (Date.now() - t.getTime()) >= 72 * 3600000;
+        })();
+        const deliverBtn = row.prCode
+          ? `<button type="button" data-deliver-pr="${escapeHtml(row.prCode)}" data-deliver-req="${escapeHtml(row.sourceDocCode)}" style="background:var(--green);color:#fff;border:none;padding:4px 10px;border-radius:var(--r6);font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🚀 发放</button>`
+          : `<button type="button" class="secondary" data-create-pr="${escapeHtml(row.docCode)}" style="font-size:12px;padding:4px 10px;white-space:nowrap;">📋 提 PR</button>`;
+        return `
+        <tr style="${isOverdue ? "background:rgba(220,50,50,.04);" : ""}">
+          <td>
+            <div><strong style="font-family:var(--mono);font-size:12px;">${escapeHtml(row.docCode)}</strong></div>
+            <div class="small" style="margin-top:3px;">
+              <button type="button" class="secondary" data-copy="${escapeHtml(row.sourceDocCode)}" style="font-size:11px;padding:2px 7px;">${escapeHtml(row.sourceDocCode)}</button>
+            </div>
+          </td>
+          <td>
+            <div><strong style="color:var(--green)">${escapeHtml(row.skuName)}</strong></div>
+            <div class="small">${escapeHtml(row.version || "")}${row.vendor ? " · " + escapeHtml(row.vendor) : ""}</div>
+          </td>
+          <td>
+            <div><strong>${escapeHtml(row.requesterName)}</strong></div>
+            <div class="small">${escapeHtml(row.requesterDepartment || row.requesterDepartmentFull || "")}</div>
+          </td>
+          <td>
+            <div>${row.stockFlag ? `<span class="badge stock">缺货 ${row.outOfStockNum}</span>` : `<span class="badge ready">无缺货</span>`}</div>
+            <div style="margin-top:5px;">${row.prCode ? `<a class="inline-link" href="${escapeHtml(row.prUrl)}" target="_blank" rel="noreferrer" style="font-size:11.5px;">${escapeHtml(row.prCode)}</a>` : `<span class="small">无 PR</span>`}</div>
+          </td>
+          <td style="white-space:nowrap;${isOverdue ? "color:var(--red);font-weight:600;" : ""}">${age != null ? age : "--"}</td>
+          <td>${deliverBtn}</td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="6"><div class="empty">没有匹配到明细。</div></td></tr>`;
+    }
+
+    function renderSoftwareSummary() {
+      const groups = softwareGroups();
+      $("softwareSummary").innerHTML = groups.length ? groups.map((group) => `
+        <article class="row-card">
+          <div class="row-head">
+            <div>
+              <h3 class="row-title">${escapeHtml(group.skuName)}</h3>
+              <div class="meta">
+                <span>版本：${escapeHtml(Array.from(group.versionSet).join(" / "))}</span>
+                <span>供应商：${escapeHtml(group.vendor || "未填写")}</span>
+                <span>申请人：${group.requesters.size} 人</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <span class="badge wait">${group.total} 条待处理</span>
+              <span class="badge stock">${group.outStock} 条缺货</span>
+              <span class="badge pr">${group.withPr} 条挂 PR</span>
+            </div>
+          </div>
+          <div class="fact-grid">
+            <div class="fact">
+              <div class="fact-label">最新发放创建时间</div>
+              <div class="fact-value">${escapeHtml(formatDateTime(group.latestTime))}</div>
+            </div>
+            <div class="fact">
+              <div class="fact-label">建议动作</div>
+              <div class="fact-value">${group.outStock ? "先盯缺货与 PR" : "优先确认直接发放"}</div>
+            </div>
+          </div>
+        </article>
+      `).join("") : `<div class="empty">当前快照没有软件聚合数据。</div>`;
+    }
+
+    function renderGuideGrid() {
+      const cards = [
+        {
+          title: "已确认接口",
+          body: "`POST https://api.agw.mihoyo.com/neone-sam-svc/v1/deliver/page`。这是你刚在 DevTools 里抓到的真实业务接口，不再是猜测路径。",
+          steps: ["请求方法：POST", "当前示例参数：page=1 / page_size=100 / sku_name=ChatGPT / deliver_type=APPLY_DELIVER / tab=WAIT_DELIVER"],
+        },
+        {
+          title: "字段语义",
+          body: "`state_desc` 表示流程状态，`stock_flag` 表示是否缺货，`out_of_stock_num` 是缺货数量，`pr_code` / `pr_jump_url` 是采购关联。",
+          steps: ["`source_doc_code`：申请单号", "`doc_code`：发放单号", "`claim_user`：最终领用人", "`has_auth_account`：是否有可发放账号"],
+        },
+        {
+          title: "为什么还要导入 JSON",
+          body: "因为我拿不到你的登录态，不能在这个环境直接请求内网接口；但现在看板已经按真实结构建模，只差你把最新 Response 贴进来刷新。",
+          steps: ["每次抓完 Response 直接导入", "导入后会写入共享快照", "团队成员刷新页面即可同步"],
+        },
+        {
+          title: "控制台导出脚本",
+          body: "我已经在工作区里放好了一个可复用脚本，适合你后续自己换查询条件后快速导出 JSON。",
+          steps: ["文件：D:/PRA/sam-distribution-export.js", "运行位置：浏览器 DevTools Console", "默认示例：ChatGPT + WAIT_DELIVER"],
+        },
+      ];
+      $("guideGrid").innerHTML = cards.map((card) => `
+        <article class="rule-card">
+          <h3>${escapeHtml(card.title)}</h3>
+          <p>${escapeHtml(card.body)}</p>
+          <ol>${card.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>
+        </article>
+      `).join("");
+    }
+
+    function renderAll() {
+      renderHeaderSafe();
+      renderMetrics();
+      renderTodoList();
+      renderSnapshotSummary();
+      renderDetailsTable();
+      renderSoftwareSummary();
+      renderGuideGrid();
+    }
+
+    // 标签配置
+    const LABEL_CONFIG = {
+      "":       { text: "未标记",    color: "var(--text-3)",  bg: "var(--surface-2)" },
+      nonpr:    { text: "📌 无需PR", color: "var(--text-2)",  bg: "var(--surface-3)" },
+      nostock:  { text: "📦 缺货挂单", color: "var(--amber)", bg: "var(--amber-light)" },
+      confirm:  { text: "✅ 已确认", color: "var(--green)",   bg: "var(--green-light)" },
+      done:     { text: "🎉 已完成", color: "var(--text-3)",  bg: "var(--surface-2)" },
+    };
+    let _labelPopReq = null;
+
+    function showLabelPop(reqCode, anchorEl) {
+      const old = document.getElementById("_labelPop");
+      if (old) old.remove();
+      if (_labelPopReq === reqCode) { _labelPopReq = null; return; }
+      _labelPopReq = reqCode;
+
+      const curRow = (state.snapshot?.rows || []).find(r => r.sourceDocCode === reqCode);
+      const curLabel = curRow?._label || "";
+
+      const pop = document.createElement("div");
+      pop.id = "_labelPop";
+      pop.style.cssText = "position:fixed;z-index:999;background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r8);box-shadow:var(--shadow-md);padding:6px;min-width:155px;";
+
+      Object.entries(LABEL_CONFIG).forEach(([value, conf]) => {
+        const item = document.createElement("div");
+        item.style.cssText = `padding:7px 12px;cursor:pointer;border-radius:var(--r6);font-size:13px;color:${value === curLabel ? "var(--blue)" : "var(--text-2)"};${value === curLabel ? "background:var(--blue-light);font-weight:600;" : ""}`;
+        item.textContent = conf.text;
+        item.onmouseenter = () => { if (value !== curLabel) item.style.background = "var(--surface-2)"; };
+        item.onmouseleave = () => { if (value !== curLabel) item.style.background = ""; };
+        item.onclick = async (e) => {
+          e.stopPropagation();
+          pop.remove(); _labelPopReq = null;
+          await saveLabelToBackend(reqCode, value, curRow?._note || "", curRow?.skuName || "");
+        };
+        pop.appendChild(item);
+      });
+
+      // 备注输入
+      const sep = document.createElement("div");
+      sep.style.cssText = "border-top:1px solid var(--border);margin:4px 0 4px;padding-top:4px;";
+      const noteInput = document.createElement("input");
+      noteInput.placeholder = "备注（回车保存）";
+      noteInput.value = curRow?._note || "";
+      noteInput.style.cssText = "width:100%;font-size:12px;padding:4px 8px;height:28px;border-radius:var(--r6);border:1px solid var(--border-2);background:var(--surface);color:var(--text-1);box-sizing:border-box;";
+      noteInput.onclick = e => e.stopPropagation();
+      noteInput.onkeydown = async e => {
+        if (e.key === "Enter") {
+          pop.remove(); _labelPopReq = null;
+          await saveLabelToBackend(reqCode, curLabel, noteInput.value.trim(), curRow?.skuName || "");
+        }
+      };
+      sep.appendChild(noteInput);
+      pop.appendChild(sep);
+      document.body.appendChild(pop);
+
+      const rect = anchorEl.getBoundingClientRect();
+      const popH = 240;
+      const top = rect.bottom + 6 + popH > window.innerHeight ? rect.top - popH - 6 : rect.bottom + 6;
+      pop.style.top  = top + "px";
+      pop.style.left = Math.min(rect.left, window.innerWidth - 170) + "px";
+
+      const dismiss = (e) => {
+        if (!pop.contains(e.target)) { pop.remove(); _labelPopReq = null; document.removeEventListener("click", dismiss); }
+      };
+      setTimeout(() => document.addEventListener("click", dismiss), 0);
+    }
+
+    async function saveLabelToBackend(reqCode, label, note, skuName) {
+      try {
+        await fetch(PROXY_BASE + "/api/label", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ req_code: reqCode, label, note, sku_name: skuName }),
+        });
+        const row = (state.snapshot?.rows || []).find(r => r.sourceDocCode === reqCode);
+        if (row) { row._label = label; row._note = note; }
+        renderTodoList();
+        showFlash(`标签已保存：${LABEL_CONFIG[label]?.text || label}`);
+      } catch (e) {
+        showFlash("标签保存失败：" + e.message);
+      }
+    }
+
+    // ── 标记缺货弹窗 ─────────────────────────────────────────────────
+    async function openMarkPrDialog(reqCode) {
+      const prCode = prompt(`为 ${reqCode} 标记缺货\n\n请输入 PR 单号（例：PR260522000060）：`);
+      if (!prCode?.trim()) return;
+      const trimmed = prCode.trim();
+      showFlash(`正在标记缺货 ${reqCode} → ${trimmed}…`);
+      try {
+        const resp = await fetch(PROXY_BASE + "/api/mark_pr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ req_code: reqCode, pr_code: trimmed }),
+        });
+        const result = await resp.json();
+        if (result.ok && result.marked > 0) {
+          showFlash(`✅ 已标记 ${result.marked} 行 → ${trimmed}`);
+          const row = (state.snapshot?.rows || []).find(r => r.sourceDocCode === reqCode);
+          if (row) {
+            row.prCode = trimmed;
+            row.prUrl  = `https://neone.mihoyo.com/procurement/demand-edit/view/${trimmed}`;
+            row.stockFlag = true;
+          }
+          renderTodoList();
+        } else if (result.marked === 0) {
+          showFlash(result.message || "无需标记的行（已全部处理）");
+        } else {
+          showFlash(`❌ 标记失败：${result.error || "未知错误"}`);
+        }
+      } catch (e) {
+        showFlash("标记缺货请求失败：" + e.message);
+      }
+    }
+
+    // ── 发放弹窗 ─────────────────────────────────────────────────────────────
+    async function openDeliverDialog(prCode, reqCode) {
+      // 先移除旧弹窗
+      const old = document.getElementById("_deliverModal");
+      if (old) old.remove();
+
+      // 构建弹窗骨架
+      const overlay = document.createElement("div");
+      overlay.id = "_deliverModal";
+      overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;";
+
+      const modal = document.createElement("div");
+      modal.style.cssText = "background:var(--surface);border-radius:var(--r12);box-shadow:var(--shadow-lg);width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:28px 32px;";
+
+      // 标题
+      modal.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <h2 style="font-size:17px;font-weight:700;margin:0;">🚀 发放确认</h2>
+          <button id="_deliverClose" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-3);">✕</button>
+        </div>
+        <div style="margin-bottom:12px;">
+          <span style="font-size:13px;color:var(--text-2);">申请单号：</span>
+          <strong style="font-family:var(--mono);font-size:13px;">${escapeHtml(reqCode)}</strong>
+        </div>
+        <div style="margin-bottom:16px;">
+          <span style="font-size:13px;color:var(--text-2);">PR 单号：</span>
+          <strong style="font-family:var(--mono);font-size:13px;">${escapeHtml(prCode)}</strong>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">发放日期 <span style="color:var(--red);">*</span></label>
+          <input id="_deliverDate" type="date" value="${new Date().toISOString().substring(0,10)}"
+            style="width:100%;padding:8px 12px;border:1px solid var(--border-2);border-radius:var(--r6);font-size:14px;background:var(--surface);color:var(--text-1);box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:20px;">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">账号（续费时填写，新增可留空）</label>
+          <input id="_deliverAccount" type="text" placeholder="例：zhangsan@mihoyo.com"
+            style="width:100%;padding:8px 12px;border:1px solid var(--border-2);border-radius:var(--r6);font-size:14px;background:var(--surface);color:var(--text-1);box-sizing:border-box;">
+        </div>
+        <div id="_deliverPreviewArea" style="margin-bottom:20px;"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button id="_deliverPreviewBtn" type="button" class="secondary" style="min-width:100px;">🔍 查看预览</button>
+          <button id="_deliverRunBtn" type="button" style="min-width:120px;background:var(--green);color:#fff;border:none;padding:8px 20px;border-radius:var(--r6);font-size:14px;font-weight:700;cursor:pointer;display:none;">✅ 确认发放</button>
+        </div>
+      `;
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      // 关闭
+      const close = () => overlay.remove();
+      document.getElementById("_deliverClose").onclick = close;
+      overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+
+      // 预览逻辑
+      let _previewPayload = null;
+
+      async function loadPreview() {
+        const date    = document.getElementById("_deliverDate").value;
+        const account = document.getElementById("_deliverAccount").value.trim();
+        const area    = document.getElementById("_deliverPreviewArea");
+        const runBtn  = document.getElementById("_deliverRunBtn");
+        area.innerHTML = `<div style="color:var(--text-3);font-size:13px;">正在查询发放信息…</div>`;
+        runBtn.style.display = "none";
+        _previewPayload = null;
+
+        try {
+          const resp = await fetch(PROXY_BASE + "/api/deliver/preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pr_code: prCode, delivery_date: date, account }),
+          });
+          const result = await resp.json();
+
+          if (result.status === "no_deliver") {
+            area.innerHTML = `<div style="padding:12px;background:var(--surface-2);border-radius:var(--r6);font-size:13px;color:var(--text-3);">ℹ️ ${result.detail}</div>`;
+          } else if (result.status === "no_wait") {
+            area.innerHTML = `<div style="padding:12px;background:var(--surface-2);border-radius:var(--r6);font-size:13px;color:var(--text-2);">⏳ 无待发放行，当前状态：${(result.states || []).join(", ")}</div>`;
+          } else if (!result.ok) {
+            area.innerHTML = `<div style="padding:12px;background:#FFF0F0;border-radius:var(--r6);font-size:13px;color:var(--red);">❌ ${escapeHtml(result.error || "查询失败")}</div>`;
+          } else if (result.status === "wait_deliver") {
+            const p = result.preview;
+            _previewPayload = { pr_code: prCode, delivery_date: date, account };
+            const linesHtml = p.lines.map(l => `
+              <div style="font-size:12px;font-family:var(--mono);padding:4px 8px;background:var(--surface-3);border-radius:4px;margin-bottom:4px;">
+                ${escapeHtml(l.doc_row_code)} → seat: ${escapeHtml(l.deliver_seat_code)}
+                ${l.cd_key ? ` · cd: ${escapeHtml(l.cd_key.substring(0,16))}…` : ""}
+                ${l.auth_account ? ` · 账号: ${escapeHtml(l.auth_account)}` : ""}
+              </div>`).join("");
+            area.innerHTML = `
+              <div style="border:1px solid var(--green);border-radius:var(--r8);padding:14px;background:#EAF4EE;">
+                <div style="font-weight:700;margin-bottom:8px;color:var(--green);">✅ 预览就绪</div>
+                <div style="font-size:13px;margin-bottom:6px;"><strong>软件：</strong>${escapeHtml(p.sku_name)}</div>
+                <div style="font-size:13px;margin-bottom:8px;"><strong>发放单：</strong>${escapeHtml(p.doc_code)} · ${p.row_count} 行</div>
+                ${linesHtml}
+                <div style="font-size:12px;color:var(--text-3);margin-top:8px;">⚠️ 点击「确认发放」将正式提交，操作不可撤销</div>
+              </div>`;
+            runBtn.style.display = "block";
+          }
+        } catch (e) {
+          area.innerHTML = `<div style="padding:12px;background:#FFF0F0;border-radius:var(--r6);font-size:13px;color:var(--red);">❌ 请求失败：${escapeHtml(e.message)}</div>`;
+        }
+      }
+
+      document.getElementById("_deliverPreviewBtn").onclick = loadPreview;
+
+      // 正式发放
+      document.getElementById("_deliverRunBtn").onclick = async () => {
+        if (!_previewPayload) return;
+        const btn = document.getElementById("_deliverRunBtn");
+        btn.disabled = true;
+        btn.textContent = "发放中…";
+        try {
+          const resp = await fetch(PROXY_BASE + "/api/deliver/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(_previewPayload),
+          });
+          const result = await resp.json();
+          if (result.ok) {
+            close();
+            showFlash(`✅ 发放成功：${result.sku_name} · ${result.lines} 行`);
+            // 本地更新 label 为 done
+            const row = (state.snapshot?.rows || []).find(r => r.sourceDocCode === reqCode);
+            if (row) row._label = "done";
+            renderTodoList();
+          } else {
+            const area = document.getElementById("_deliverPreviewArea");
+            if (area) area.innerHTML += `<div style="margin-top:10px;padding:10px;background:#FFF0F0;border-radius:var(--r6);font-size:13px;color:var(--red);">❌ 发放失败：${escapeHtml(result.error || "未知错误")}</div>`;
+            btn.disabled = false;
+            btn.textContent = "✅ 确认发放";
+          }
+        } catch (e) {
+          showFlash("发放请求失败：" + e.message);
+          btn.disabled = false;
+          btn.textContent = "✅ 确认发放";
+        }
+      };
+
+      // 自动加载预览
+      loadPreview();
+    }
+
+    function bindEvents() {
+      document.querySelectorAll(".tab").forEach((button) => {
+        button.addEventListener("click", () => {
+          const tab = button.dataset.tab;
+          state.activeTab = tab;
+          document.querySelectorAll(".tab").forEach((item) => item.classList.toggle("active", item.dataset.tab === tab));
+          document.querySelectorAll(".panel").forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === tab));
+        });
+      });
+
+      // 待发放清单子 tab
+      document.getElementById("todoSubTabs").addEventListener("click", (e) => {
+        const btn = e.target.closest(".sub-tab");
+        if (!btn) return;
+        const sub = btn.dataset.sub;
+        document.querySelectorAll(".sub-tab").forEach(b => b.classList.toggle("active", b.dataset.sub === sub));
+        document.querySelectorAll(".sub-panel").forEach(p => p.classList.toggle("active", p.id === "sub" + sub.charAt(0).toUpperCase() + sub.slice(1)));
+      });
+
+      $("refreshSnapshot").addEventListener("click", loadSnapshotSafe);
+
+      $("openImport").addEventListener("click", () => $("importModal").classList.add("open"));
+      $("showAutoSync").addEventListener("click", () => $("importModal").classList.add("open"));
+      $("closeImport").addEventListener("click", () => $("importModal").classList.remove("open"));
+      $("loadSeed").addEventListener("click", async () => {
+        await saveSnapshot(createEmptySnapshot());
+        $("importModal").classList.remove("open");
+        showFlash("已清空快照。");
+      });
+      $("saveImport").addEventListener("click", async () => {
+        try {
+          const snapshot = parseRawResponse($("importInput").value.trim());
+          await saveSnapshot(snapshot);
+          $("importModal").classList.remove("open");
+          $("importInput").value = "";
+          showFlash("SAM 共享快照已更新。");
+        } catch (error) {
+          showFlash(error.message || "导入失败，请检查 JSON。");
+        }
+      });
+
+      $("detailSearch").addEventListener("input", (e) => { state.detailSearch = e.target.value; renderDetailsTable(); });
+      $("detailStockFilter").addEventListener("change", (e) => { state.detailStockFilter = e.target.value; renderDetailsTable(); });
+      $("detailPrFilter").addEventListener("change", (e) => { state.detailPrFilter = e.target.value; renderDetailsTable(); });
+
+      // 统一点击委托：折叠 / 复制 / 标签弹窗 / 标记缺货 / 发放
+      document.body.addEventListener("click", async (event) => {
+        // 折叠：点 row-head 区域切换展开（排除 badge/button/a 交互）
+        const collapseHead = event.target.closest("[data-collapse-toggle]");
+        if (collapseHead && !event.target.closest("[data-label-req],[data-copy],[data-create-pr],button,a")) {
+          const card = collapseHead.closest(".row-card");
+          card?.classList.toggle("expanded");
+          return;
+        }
+        const copyBtn = event.target.closest("[data-copy]");
+        if (copyBtn) {
+          try { await navigator.clipboard.writeText(copyBtn.getAttribute("data-copy")); showFlash(`已复制：${copyBtn.getAttribute("data-copy")}`); }
+          catch (_) { showFlash("复制失败，请手动复制。"); }
+          return;
+        }
+        const labelBadge = event.target.closest("[data-label-req]");
+        if (labelBadge) {
+          event.stopPropagation();
+          showLabelPop(labelBadge.getAttribute("data-label-req"), labelBadge);
+          return;
+        }
+        const markBtn = event.target.closest("[data-mark-pr]");
+        if (markBtn) {
+          await openMarkPrDialog(markBtn.getAttribute("data-mark-pr"));
+          return;
+        }
+        // 发放按钮
+        const deliverBtn = event.target.closest("[data-deliver-pr]");
+        if (deliverBtn) {
+          await openDeliverDialog(
+            deliverBtn.getAttribute("data-deliver-pr"),
+            deliverBtn.getAttribute("data-deliver-req"),
+          );
+          return;
+        }
+      });
+    }
+
+    function setupCrossWindowSync() {
+      window.addEventListener("message", async (event) => {
+        const message = event.data;
+        if (!message || message.type !== SYNC_MESSAGE_TYPES.import) {
+          return;
+        }
+
+        try {
+          await importSnapshotPayload(message.snapshot || message.payload || message.data, message.source || "SAM Auto Sync");
+          showFlash("已收到来自 SAM 页面的自动同步。");
+          if (event.source && typeof event.source.postMessage === "function") {
+            event.source.postMessage({ type: SYNC_MESSAGE_TYPES.ack, ok: true }, "*");
+          }
+        } catch (error) {
+          showFlash(error.message || "自动同步失败，请改用手动导入。");
+          if (event.source && typeof event.source.postMessage === "function") {
+            event.source.postMessage({ type: SYNC_MESSAGE_TYPES.ack, ok: false, error: error.message || "sync failed" }, "*");
+          }
+        }
+      });
+    }
+
+    function notifyOpenerReady() {
+      if (!window.opener || window.opener.closed) {
+        return;
+      }
+      try {
+        window.opener.postMessage({ type: SYNC_MESSAGE_TYPES.ready }, "*");
+      } catch (error) {
+        // noop
+      }
+    }
+
+    bindEvents();
+    if ($("loadSeed")) {
+      $("loadSeed").addEventListener("click", async () => {
+        await saveSnapshot(createEmptySnapshot());
+        showFlash("已清空旧快照，请从 SAM 页面重新同步。");
+      });
+    }
+
+    // ── 代理直连拉取真实数据 ──────────────────────────────────────
+    const PROXY_BASE = "http://127.0.0.1:9003";
+    const SAM_DELIVER_PATH = "/neone-sam-svc/v1/deliver/page";
+
+    function setFetchStatus(msg, isError) {
+      const el = $("fetchStatus");
+      el.style.display = "block";
+      el.style.color = isError ? "var(--red)" : "var(--muted)";
+      el.textContent = msg;
+    }
+
+    async function proxyFetchPage(pageNum, pageSize) {
+      const resp = await fetch(PROXY_BASE + SAM_DELIVER_PATH, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page: pageNum,
+          page_size: pageSize,
+          sku_name: "",
+          deliver_type: "APPLY_DELIVER",
+          tab: "WAIT_DELIVER",
+        }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (data.code !== 0) throw new Error(`SAM 返回错误：${data.message || data.code}`);
+      return data;
+    }
+
+    function showSkeletonLoader() {
+      // 给卡片列表加半透明遮罩感
+      ["listProxy","listCollective","listVcc"].forEach(id => {
+        const el = $(id);
+        if (el) { el.style.opacity = "0.4"; el.style.pointerEvents = "none"; }
+      });
+    }
+    function hideSkeletonLoader() {
+      ["listProxy","listCollective","listVcc"].forEach(id => {
+        const el = $(id);
+        if (el) { el.style.opacity = ""; el.style.pointerEvents = ""; }
+      });
+    }
+
+    async function fetchLiveData() {
+      const btn = $("fetchLive");
+      btn.disabled = true;
+      btn.textContent = "拉取中…";
+      setFetchStatus("正在请求 SAM 数据…");
+      showSkeletonLoader();
+      try {
+        // 走后端 /api/refresh（带缓存 + 全量分页，后端处理）
+        setFetchStatus("正在从后端拉取全量数据…");
+        const resp = await fetch(PROXY_BASE + "/api/refresh", { method: "POST" });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const result = await resp.json();
+        if (!result.ok) throw new Error(result.error || "后端返回错误");
+
+        // result.items 是已分组、已加标签的待发放列表
+        // 转换为 snapshot 格式供现有渲染逻辑使用
+        const items = result.items || [];
+        const rows = items.map(item => ({
+          docCode:              item.dis_code,
+          docRowCode:           item.dis_code + "-1",
+          sourceDocCode:        item.req_code,
+          sourceDocRowCode:     item.req_code + "-1",
+          deliverType:          "APPLY_DELIVER",
+          deliverTypeDesc:      "申请发放",
+          state:                "WAIT_DELIVER",
+          stateDesc:            "待发放",
+          deliverCreateTime:    item.date + " 00:00:00",
+          sourceCreateTime:     item.date + " 00:00:00",
+          skuCode:              "",
+          skuName:              item.sku_name || "",
+          version:              item.version || "",
+          vendor:               item.vendor || "",
+          currency:             item.currency || "",
+          unitPrice:            item.unit_price || "",
+          unitName:             item.unit_name || "",
+          requesterName:        item.name || "",
+          requesterDomain:      "",
+          requesterDepartment:  item.dept || "",
+          requesterDepartmentFull: item.dept_full || "",
+          claimUserName:        item.claim_user || item.name || "",
+          claimUserDomain:      "",
+          claimUserDepartmentFull: item.dept_full || "",
+          hasAuthAccount:       false,
+          hasSeat:              false,
+          hasCdKey:             false,
+          canRecycle:           false,
+          stockFlag:            item.stock_flag || false,
+          outOfStockNum:        item.stock_count || 0,
+          prCode:               item.pr_code || "",
+          prUrl:                item.pr_code ? `https://neone.mihoyo.com/procurement/demand-edit/view/${item.pr_code}` : "",
+          disabledDeliverFlag:  false,
+          _label:               item.label || "",
+          _note:                item.note || "",
+          _rowCount:            item.row_count || 1,
+        }));
+
+        const snapshot = {
+          importedAt:     new Date().toISOString(),
+          source:         "SAM Backend",
+          scopeLabel:     `全量待发放 · ${items.length} 个 REQ · ${new Date().toLocaleString("zh-CN")}`,
+          requestPayload: {},
+          counts: {
+            totalCount:       items.length,
+            waitCount:        items.length,
+            processingCount:  0,
+            completeCount:    0,
+            closedCount:      0,
+            outStockCount:    items.filter(i => i.stock_flag).length,
+          },
+          rows,
+        };
+        await saveSnapshot(snapshot);
+        setFetchStatus(`✅ 已加载 ${items.length} 个待发放 REQ`);
+        showFlash(`已加载 ${items.length} 个待发放 REQ`);
+      } catch (err) {
+        const msg = (err.message || "").includes("Failed to fetch") || (err.message || "").includes("fetch")
+          ? "连接代理失败，请确认 server.py 已启动（端口 9003）"
+          : (err.message || "拉取失败");
+        setFetchStatus(msg, true);
+        showFlash(msg);
+      } finally {
+        hideSkeletonLoader();
+        btn.disabled = false;
+        btn.textContent = "拉取最新数据";
+      }
+    }
+
+    $("fetchLive").addEventListener("click", fetchLiveData);
+
+    // ── PR 提单功能 ──────────────────────────────────────────────
+    const PTP_BASE = "http://127.0.0.1:9003";
+
+    // 非代采供应商关键词（来自采购单品-软件.xlsx Sheet1）
+    const NON_PROXY_KEYWORDS = [
+      "北京贝锐","飞书","广大大","红鹰","汇科天下","火山云","蓝湖","石墨文档","腾讯","威科先行","微软",
+      "AppGrowing","Beluga","Bloomberg","Brandwatch","Consent Manager","EmailonAcid","Figma","Google",
+      "JumpServer","Meltwater","Minas","Miro","Notion","Open AI","OpenAI","ChatGPT","Perforce",
+      "PR times","Restream","Sanuker","Sensor Tower","SimilarWeb","Slack","Social insight","Sprinklr",
+      "Tableau","Taggbox","Tubular","Twitter","Wind","Zoom","Coverity","北京云回中创","爬虫代理",
+      "Cursor","DIFY","HybridCLR","IncrediBuild","JetBrains","Matlab","PivotalPath"
+    ];
+
+    // 判断是否为非代采
+    function isNonProxy(row) {
+      const name = (row.skuName + " " + (row.vendor || "")).toLowerCase();
+      return NON_PROXY_KEYWORDS.some(kw => name.includes(kw.toLowerCase()));
+    }
+
+    // ── 待发放清单三分区分类 ─────────────────────────────────────────
+    // VCC 支付：境外 SaaS，直接刷公司虚拟卡
+    const VCC_KEYWORDS = [
+      "Figma","Miro","Notion","Slack","Zoom","Google","Twitter",
+      "Tableau","Restream","SimilarWeb","Brandwatch","Meltwater",
+      "Sprinklr","Sensor Tower","AppGrowing","EmailonAcid",
+      "Consent Manager","Taggbox","Tubular","Social insight","Sanuker",
+      "PR times","Bloomberg","Wind","Open AI","OpenAI","ChatGPT","Cursor","DIFY"
+    ];
+    // 集采：企业协议 / 批量采购软件（国内大厂 + 大型软件商）
+    const COLLECTIVE_KEYWORDS = [
+      "微软","Microsoft","JetBrains","Matlab","IncrediBuild","Perforce",
+      "Coverity","PivotalPath","HybridCLR","Minas","Beluga","JumpServer",
+      "北京贝锐","飞书","广大大","红鹰","汇科天下","火山云","蓝湖",
+      "石墨文档","腾讯","威科先行","北京云回中创","爬虫代理"
+    ];
+    // 其余走代采
+
+    /** 返回 "vcc" | "collective" | "proxy" */
+    function classifyRow(row) {
+      const name = (row.skuName + " " + (row.vendor || "")).toLowerCase();
+      if (VCC_KEYWORDS.some(kw => name.includes(kw.toLowerCase()))) return "vcc";
+      if (COLLECTIVE_KEYWORDS.some(kw => name.includes(kw.toLowerCase()))) return "collective";
+      return "proxy";
+    }
+
+    // 预算配置：代采Q2 vs 非代采Q2
+    const BUDGET_PROXY     = { no: "BZNX2026390868-3", desc: "代采-Q2" };
+    const BUDGET_NON_PROXY = { no: "BZNX2026390866-3", desc: "非代采-Q2" };
+    const BUDGET_COMMON = {
+      business_type_path_code: "S00016030>S00001511>S00016086",
+      space_id: "8",
+      version_code: "FBB_COM",
+      version_name: "非版本",
+    };
+
+    // 软件采购性质枚举（真实值来自 JS bundle）
+    const PURCHASE_TYPE = { add: "account_add", renewal: "account_renewal" };
+
+    let prCurrentRow = null;
+
+    function setPrStatus(msg, isError) {
+      const el = $("prStatus");
+      el.style.display = "block";
+      el.style.color = isError ? "var(--red)" : "var(--muted)";
+      el.textContent = msg;
+    }
+
+    function buildPrTitle(row) {
+      return `${row.skuName}-${row.claimUserName || row.requesterName}-${row.sourceDocCode}`;
+    }
+
+    function buildPrReason(row, note) {
+      const fullDept = row.claimUserDepartmentFull || row.requesterDepartmentFull || row.requesterDepartment || "";
+      const dept = fullDept.replace(/^米哈游[>/]?/, "");
+      const skuName = row.skuName || "";
+      const version = row.version || "";
+      const userName = row.claimUserName || row.requesterName || "";
+      const reqCode = row.sourceDocCode || "";
+      const versionStr = (version && !skuName.includes(version)) ? `（${version}版本）` : "";
+      const noteStr = note ? `，${note}` : "";
+      return `${dept}\n申请采购${skuName}${versionStr}${noteStr}，关联申请单：${reqCode}，申请人：${userName}。`;
+    }
+
+    function buildPrBenefit(row, note) {
+      const skuName = row.skuName || "";
+      const userName = row.claimUserName || row.requesterName || "";
+      const deptShort = (row.requesterDepartment || (row.claimUserDepartmentFull || "").split(">").slice(-1)[0] || "").replace(/[组线部门]$/, "");
+      if (note && note.length > 4 && note.length < 80) {
+        // 提炼 note 里的用途核心词，拼成"满足XXX需求"句式
+        const useCore = note
+          .replace(/^(申请|使用|订阅|购买|采购)(订阅)?/, "")
+          .replace(/[（(].*?[)）]/g, "")
+          .replace(/，用于.+$/, "")
+          .replace(/用于/, "")
+          .trim();
+        return `满足${deptShort ? deptShort + "相关" : ""}${useCore}需求，保障${userName}正常使用${skuName}。`;
+      }
+      return `满足${deptShort ? deptShort + "相关" : ""}工作需求，保障${userName}正常使用${skuName}。`;
+    }
+
+    function getDeptDisplay(row) {
+      return row.claimUserDepartmentFull || row.requesterDepartmentFull || "";
+    }
+
+    async function ptpFetch(path, body) {
+      const resp = await fetch(PTP_BASE + "/neone-ptp-svc" + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (data.retcode !== 0 && data.code !== 0) {
+        throw new Error(data.message || data.msg || `接口错误 ${data.retcode || data.code}`);
+      }
+      return data;
+    }
+
+    async function openPrModal(docCode) {
+      const row = (state.snapshot?.rows || []).find(r => r.docCode === docCode);
+      if (!row) return;
+      prCurrentRow = row;
+
+      const nonProxy = isNonProxy(row);
+      const budget = nonProxy ? BUDGET_NON_PROXY : BUDGET_PROXY;
+
+      $("prModalDesc").textContent = `发放单：${row.docCode}  |  申请单：${row.sourceDocCode}  |  软件：${row.skuName} ${row.version}  |  领用人：${row.claimUserName || row.requesterName}`;
+      $("prBenefitDept").value = getDeptDisplay(row);
+      $("prMonths").value = "1";
+      $("prPurchaseType").value = "account_add";
+      $("prStatus").textContent = "正在获取申请事由…";
+      $("prStatus").style.display = "block";
+      $("prStatus").style.color = "var(--muted)";
+      $("prModal").classList.add("open");
+
+      // 异步拉申请单详情，获取申请事由 note
+      let note = "";
+      try {
+        const detailResp = await fetch(PTP_BASE + "/neone-sam-svc/out/v1/claim/info/detail", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ doc_code: row.sourceDocCode }),
+        });
+        const detailData = await detailResp.json();
+        if (detailData.code === 0 && detailData.data?.head?.note) {
+          note = detailData.data.head.note;
+        }
+      } catch (e) { /* ignore */ }
+
+      prCurrentRow._note = note; // 存到行对象上供 submitPr 使用
+
+      const title = buildPrTitle(row);
+      const reason = buildPrReason(row, note);
+      const benefit = buildPrBenefit(row, note);
+
+      $("prFormPreview").innerHTML = `
+        <div class="fact"><div class="fact-label">需求标题</div><div class="fact-value" style="font-size:13px">${escapeHtml(title)}</div></div>
+        <div class="fact"><div class="fact-label">需求产生原因</div><div class="fact-value" style="font-size:12px;white-space:pre-wrap;line-height:1.7">${escapeHtml(reason)}</div></div>
+        <div class="fact"><div class="fact-label">预计效果收益</div><div class="fact-value" style="font-size:13px">${escapeHtml(benefit)}</div></div>
+        <div class="fact" style="background:${nonProxy ? "rgba(45,124,89,0.08)" : "rgba(15,118,110,0.08)"}">
+          <div class="fact-label">预算选用</div>
+          <div class="fact-value" style="font-size:13px">${escapeHtml(budget.no)} · ${nonProxy ? "非代采" : "代采"} Q2</div>
+        </div>
+      `;
+
+      $("prStatus").style.display = "none";
+    }
+
+    async function submitPr(asDraft) {
+      if (!prCurrentRow) return;
+      const row = prCurrentRow;
+      const months = parseInt($("prMonths").value, 10) || 1;
+      const purchaseTypeVal = $("prPurchaseType").value;
+
+      $("prSubmitBtn").disabled = true;
+      $("prDraftBtn").disabled = true;
+
+      try {
+        const note = row._note || "";
+        const title = buildPrTitle(row);
+        const reason = buildPrReason(row, note);
+        const benefit = buildPrBenefit(row, note);
+        const nonProxy = isNonProxy(row);
+        const budget = nonProxy ? BUDGET_NON_PROXY : BUDGET_PROXY;
+        const deptDisplay = $("prBenefitDept").value.trim() || getDeptDisplay(row);
+
+        // Step 1: 查 SAM 台账，取 sku_code 和 purchase_type_path_code
+        setPrStatus("Step 1/3  查询软件 SKU 信息…");
+        let skuCode = "";
+        let purchaseTypePathCode = "";
+        try {
+          // 先精确查全名，再截取前10字符模糊查兜底
+          const trySearch = async (keyword) => {
+            const r = await fetch(PTP_BASE + "/neone-sam-svc/v1/ledger/page", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ page: 1, page_size: 5, sku_name: keyword }),
+            });
+            const d = await r.json();
+            return (d.code === 0 && d.data && d.data.list) ? d.data.list : [];
+          };
+          let list = await trySearch(row.skuName);
+          // 若精确名未命中，截取前10个字符模糊搜
+          if (list.length === 0) list = await trySearch(row.skuName.slice(0, 10));
+          if (list.length > 0) {
+            const exact = list.find(s => s.sku_name === row.skuName && s.sw_version === row.version)
+              || list.find(s => s.sku_name === row.skuName)
+              || list[0];
+            skuCode = exact.sku_code || "";
+            purchaseTypePathCode = exact.purchase_type_path_code || "";
+          }
+        } catch (e) { /* 查不到就留空 */ }
+
+        // Step 2: 查预算匹配受益部门 code
+        setPrStatus("Step 2/3  匹配受益部门…");
+        let expenseDeptCode = "";
+        try {
+          const budgetResp = await fetch(PTP_BASE + "/neone-ptp-svc/budget/selection/list", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items: [{ budget_no: budget.no, space_id: BUDGET_COMMON.space_id }] }),
+          });
+          const budgetData = await budgetResp.json();
+          const deptList = (budgetData.data && budgetData.data.budget_selection_list && budgetData.data.budget_selection_list[0] && budgetData.data.budget_selection_list[0].expense_department_list) || [];
+          if (deptList.length > 0) {
+            const normalize = s => s.replace(/\s/g, "").toLowerCase();
+            const parts = deptDisplay.split(">");
+            let best = null, bestScore = -1;
+            for (const dept of deptList) {
+              const name = normalize(dept.value);
+              let score = 0;
+              for (const part of parts) { if (name.includes(normalize(part))) score++; }
+              if (score > bestScore) { bestScore = score; best = dept; }
+            }
+            if (best) expenseDeptCode = best.key;
+          }
+        } catch (e) { /* 匹配失败留空 */ }
+
+        // Step 3: 创建空草稿头
+        setPrStatus("Step 3/3  创建 PR 草稿…");
+        const addData = await ptpFetch("/demand/add", {
+          demand_head: {
+            title, state: 1, demand_type: 1,
+            applicant: "yuqing.xie02",
+            department_code: "0780>2136>1396",
+            currency: "CNY",
+            apply_reason: reason,
+            expected_effect: benefit,
+            attachment_list: [],
+            source: "PTP", apply_type: "common",
+            merch_execute_method: "",
+            recipient_is_obtain_packing_list: 0,
+          },
+          rows: [],
+        });
+        const prCode = addData.data && addData.data.code;
+        if (!prCode) throw new Error("创建草稿失败：未获取到 PR 单号");
+
+        // Step 4: demand/update 写入明细行（不带 code/row_code，version=1）
+        setPrStatus("Step 3/3  写入需求明细…");
+        const useDate = new Date();
+        useDate.setDate(useDate.getDate() + 1);
+        const useDateStr = useDate.toISOString().slice(0, 10);
+
+        const buildRow = (purchaseType, period) => ({
+          demand_code: prCode, type: 1,
+          purchase_type_path_code: purchaseTypePathCode,
+          business_type_path_code: BUDGET_COMMON.business_type_path_code,
+          quantity: "1", quantity_unit_code: "U001",
+          use_date: useDateStr, use_date_timezone_type: 8,
+          benefit_center_code: "", is_pay_advance: 2,
+          attachment_list: [], description: "",
+          unit_price: row.unitPrice || row.sw_unit_price || "",
+          currency: row.currency || row.sw_currency || "USD",
+          counterpart_list: [], state: 1, company_code: "20", flow_type: 0,
+          sku_code: skuCode, title: "",
+          budget_space_id: BUDGET_COMMON.space_id,
+          budget_no: budget.no,
+          channel_type_path_code: "", version_code: BUDGET_COMMON.version_code,
+          financial_tag: "BQ00001016", active_name: "",
+          receipt_address_type: 1, receipt_address: "",
+          receipt_warehouse_code: "", software_purchase_type: purchaseType,
+          subscribe_period: period, merch_usage_code: "",
+          outbound_warehouse_code: "", merch_collector_list: [],
+          activity_code: "",
+          expense_department_path_code: expenseDeptCode,
+          ip_code: "", budget_area_code: "", collection_pr_row_code: "",
+        });
+
+        const updatedRows = [buildRow(purchaseTypeVal, months > 1 ? 1 : months)];
+        if (months > 1 && purchaseTypeVal === "account_add") {
+          updatedRows.push(buildRow("account_renewal", months - 1));
+        }
+
+        const updateResp = await fetch(PTP_BASE + "/neone-ptp-svc/demand/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            demand_head: {
+              title, state: 1, demand_type: 1,
+              applicant: "yuqing.xie02",
+              department_code: "0780>2136>1396",
+              currency: "CNY",
+              apply_reason: reason,
+              expected_effect: benefit,
+              associated_demand_code_list: [],
+              attachment_list: [],
+              code: prCode,
+              inform_users: [],
+              owner: "yuqing.xie02",
+              execution_cycle_start: "", execution_cycle_end: "",
+              source: "PTP", apply_type: "common",
+              merch_execute_method: "",
+              recipient_is_obtain_packing_list: 0,
+              srm_ppr_code: "",
+            },
+            rows: updatedRows,
+            code: prCode,
+            version: addData.data.version || 1,
+          }),
+        });
+        const updateData = await updateResp.json();
+        if (updateData.retcode !== 0) {
+          throw new Error("明细写入失败：" + (updateData.message || updateData.retcode));
+        }
+
+        // 完成
+        const editUrl = `https://neone.mihoyo.com/procurement/demand-edit/edit/${prCode}?hide_company_name=y&hide_expense_attribute_name=y`;
+        const skuLine = skuCode ? `SKU: ${skuCode}` : "⚠️ SKU未匹配，请手动选择采购类别及单品";
+        const deptLine = expenseDeptCode ? `受益部门已匹配：${deptDisplay}` : "⚠️ 受益部门未匹配，请手动选择";
+
+        setPrStatus(`✅ 已创建并填写明细 → ${prCode}`, false);
+        showFlash(`已创建：${prCode}`);
+        window.open(editUrl, "_blank");
+
+        $("prFormPreview").innerHTML += `
+          <div class="fact" style="background:rgba(45,124,89,0.08);border-color:rgba(45,124,89,0.2)">
+            <div class="fact-label">✅ 草稿已创建：${escapeHtml(prCode)}</div>
+            <div class="fact-value" style="font-size:12px;line-height:1.8">${escapeHtml(skuLine)}<br>${escapeHtml(deptLine)}<br>请在采购系统核查明细后点击「提交」。</div>
+          </div>
+        `;
+
+        const cardBtn = document.querySelector(`[data-create-pr="${CSS.escape(row.docCode)}"]`);
+        if (cardBtn) {
+          const link = document.createElement("a");
+          link.className = "inline-link";
+          link.href = editUrl;
+          link.target = "_blank";
+          link.rel = "noreferrer";
+          link.textContent = `编辑 PR · ${prCode}`;
+          cardBtn.replaceWith(link);
+        }
+
+      } catch (err) {
+        setPrStatus(err.message || "提交失败", true);
+        showFlash(err.message || "提交失败");
+      } finally {
+        $("prSubmitBtn").disabled = false;
+        $("prDraftBtn").disabled = false;
+      }
+    }
+    $("closePrModal").addEventListener("click", () => $("prModal").classList.remove("open"));
+    $("prSubmitBtn").addEventListener("click", () => submitPr(false));
+    $("prDraftBtn").addEventListener("click", () => submitPr(true));
+
+    document.body.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-create-pr]");
+      if (btn) openPrModal(btn.getAttribute("data-create-pr"));
+    });
+    setupCrossWindowSync();
+    loadSnapshotSafe().catch(() => showFlash("加载快照失败，请刷新重试。"));
+    window.setTimeout(notifyOpenerReady, 0);
+
+    // ══════════════════════════════════════════════════════════════
+    // SKU 创建板块
+    // ══════════════════════════════════════════════════════════════
+    const SKU_VERSIONS_DOMESTIC = [
+      "单一游戏项目全媒体永久授权",
+      "单一游戏项目内嵌+全媒体永久授权",
+    ];
+    const SKU_PRESETS = {
+      domestic: { version: "单一游戏项目全媒体永久授权", currency: "CNY", country: "中国" },
+      overseas: { version: "Desktop",                    currency: "USD", country: "美国" },
+      saas:     { version: "年度订阅",                   currency: "CNY", country: "中国" },
+    };
+
+    let _skuPreset = SKU_PRESETS.domestic; // 默认国内字体
+    let _skuFilename = "";                 // 生成后的文件名
+
+    function skuMakeRow(defaults = {}, suggested = false) {
+      const tr = document.createElement("tr");
+      tr.dataset.skuRow = "1";
+      if (suggested) tr.classList.add("suggested");
+      const v   = defaults.version  || _skuPreset.version;
+      const c   = defaults.currency || _skuPreset.currency;
+      const cty = defaults.country  || _skuPreset.country;
+      const note = defaults.note || "";
+      // 安全 escape
+      const esc = s => String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+      tr.innerHTML = `
+        <td><input type="text" class="sku-name"    placeholder="【软件名称】"  value="${esc(defaults.name||'')}"></td>
+        <td><input type="text" class="sku-version" placeholder="版本/授权类型" value="${esc(v)}"></td>
+        <td><input type="text" class="sku-vendor"  placeholder="厂商名称"      value="${esc(defaults.vendor||'')}"></td>
+        <td><input type="number" class="sku-price" placeholder="0" min="0" step="0.01" value="${esc(defaults.price||'')}"></td>
+        <td>
+          <select class="sku-currency">
+            <option value="CNY" ${c==='CNY'?'selected':''}>CNY</option>
+            <option value="USD" ${c==='USD'?'selected':''}>USD</option>
+            <option value="EUR" ${c==='EUR'?'selected':''}>EUR</option>
+          </select>
+        </td>
+        <td>
+          <select class="sku-country">
+            <option value="中国" ${cty==='中国'?'selected':''}>中国</option>
+            <option value="美国" ${cty==='美国'?'selected':''}>美国</option>
+            <option value="欧元区" ${cty==='欧元区'?'selected':''}>欧元区</option>
+          </select>
+        </td>
+        <td><input type="text" class="sku-note sku-suggest-note" placeholder="说明" title="${esc(note)}" value="${esc(note)}" style="min-width:90px"></td>
+        <td class="sku-del-col"><button class="sku-del-btn" title="删除">✕</button></td>`;
+      // 币种联动汇率基准国
+      tr.querySelector(".sku-currency").addEventListener("change", e => {
+        const ct = tr.querySelector(".sku-country");
+        const map = { CNY: "中国", USD: "美国", EUR: "欧元区" };
+        ct.value = map[e.target.value] || "中国";
+      });
+      // 任意字段修改后去掉 suggested 高亮
+      tr.querySelectorAll("input,select").forEach(el => {
+        el.addEventListener("input", () => tr.classList.remove("suggested"));
+        el.addEventListener("change", () => tr.classList.remove("suggested"));
+      });
+      tr.querySelector(".sku-del-btn").addEventListener("click", () => {
+        tr.remove();
+        if (!$("skuTableBody").children.length) skuAddRow();
+      });
+      return tr;
+    }
+
+    function skuAddRow(defaults, suggested) {
+      $("skuTableBody").appendChild(skuMakeRow(defaults, suggested));
+    }
+
+    function skuGetRows() {
+      return [...$("skuTableBody").querySelectorAll("tr[data-sku-row]")].map(tr => ({
+        name:    tr.querySelector(".sku-name").value.trim(),
+        version: tr.querySelector(".sku-version").value.trim(),
+        vendor:  tr.querySelector(".sku-vendor").value.trim(),
+        price:   parseFloat(tr.querySelector(".sku-price").value) || 0,
+        currency: tr.querySelector(".sku-currency").value,
+        country:  tr.querySelector(".sku-country").value,
+      }));
+    }
+
+    function skuValidate(rows) {
+      const errs = [];
+      rows.forEach((r, i) => {
+        if (!r.name)    errs.push(`第${i+1}行：软件名称不能为空`);
+        if (!r.version) errs.push(`第${i+1}行：版本/授权类型不能为空`);
+        if (!r.vendor)  errs.push(`第${i+1}行：厂商不能为空`);
+        if (!r.price || r.price <= 0) errs.push(`第${i+1}行：预估单价必须大于 0`);
+      });
+      return errs;
+    }
+
+    // 预设按钮点击 → 更新全局预设 + 刷新现有行默认值（不覆盖已填内容）
+    document.querySelectorAll(".sku-preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".sku-preset-btn").forEach(b => b.style.borderColor = "");
+        btn.style.borderColor = "var(--primary)";
+        _skuPreset = SKU_PRESETS[btn.dataset.preset] || SKU_PRESETS.domestic;
+        const rows = skuGetRows();
+        const allEmpty = rows.every(r => !r.name && !r.vendor && !r.price);
+        if (allEmpty) {
+          $("skuTableBody").innerHTML = "";
+          skuAddRow();
+        }
+      });
+    });
+
+    $("skuAddRow").addEventListener("click", () => skuAddRow());
+
+    $("skuClearAll").addEventListener("click", () => {
+      if (!confirm("确认清空所有行？")) return;
+      $("skuTableBody").innerHTML = "";
+      skuAddRow();
+      $("skuResult").classList.remove("show");
+    });
+
+    // ── 智能填充 ────────────────────────────────────────────────────────
+    $("skuParseBtn").addEventListener("click", async () => {
+      const input = $("skuParseInput").value.trim();
+      if (!input) { showFlash("请先输入软件信息"); return; }
+
+      const btn = $("skuParseBtn");
+      const loading = $("skuParseLoading");
+      const statusEl = $("skuParseStatus");
+
+      btn.disabled = true;
+      btn.textContent = "识别中…";
+      loading.classList.add("show");
+      if (statusEl) { statusEl.textContent = "⏳ AI 正在识别，通常需要 3~8 秒…"; statusEl.style.color = "var(--text-2)"; }
+
+      try {
+        const resp = await fetch(PROXY_BASE + "/api/sku/lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input }),
+        });
+        if (!resp.ok) throw new Error(`服务器返回 ${resp.status}，请确认后端正在运行`);
+        const result = await resp.json();
+        if (!result.ok) throw new Error(result.error || "识别失败");
+
+        const suggestions = result.suggestions || [];
+        if (!suggestions.length) {
+          if (statusEl) { statusEl.textContent = "⚠️ 未识别到软件信息，请补充描述后重试"; statusEl.style.color = "var(--danger)"; }
+          return;
+        }
+
+        // 如果表格只有一行空行，清空后填入；否则追加
+        const existRows = skuGetRows();
+        const hasContent = existRows.some(r => r.name || r.vendor || r.price);
+        if (!hasContent) $("skuTableBody").innerHTML = "";
+
+        suggestions.forEach(s => skuAddRow(s, true));
+        if (statusEl) { statusEl.textContent = `✅ 已识别 ${suggestions.length} 款软件，高亮行为推荐值，可逐行修改`; statusEl.style.color = "var(--success)"; }
+        // 清空输入框
+        $("skuParseInput").value = "";
+        // 滚动到表格
+        $("skuTableBody").closest(".sku-table-wrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } catch(e) {
+        if (statusEl) { statusEl.textContent = "❌ " + e.message; statusEl.style.color = "var(--danger)"; }
+        showFlash("识别失败：" + e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "识别并填入表格";
+        loading.classList.remove("show");
+      }
+    });
+
+    // ── 生成 Excel ───────────────────────────────────────────────────────
+    $("skuGenerate").addEventListener("click", async () => {
+      const rows = skuGetRows().filter(r => r.name || r.vendor || r.price);
+      if (!rows.length) { showFlash("请至少填写一行 SKU 信息"); return; }
+      const errs = skuValidate(rows);
+      if (errs.length) { showFlash(errs[0]); return; }
+
+      const btn = $("skuGenerate");
+      btn.disabled = true;
+      btn.textContent = "生成中…";
+      try {
+        const resp = await fetch(PROXY_BASE + "/api/sku/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: rows }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const result = await resp.json();
+        if (!result.ok) throw new Error(result.error || "生成失败");
+
+        _skuFilename = result.filename;
+
+        const ul = $("skuResultList");
+        ul.innerHTML = rows.map(r =>
+          `<li>${r.name} · ${r.version} · ${r.vendor} · ${r.currency} ${r.price.toLocaleString()}</li>`
+        ).join("");
+        $("skuResult").classList.add("show");
+        // 去除高亮
+        $("skuTableBody").querySelectorAll("tr.suggested").forEach(tr => tr.classList.remove("suggested"));
+        showFlash(`✅ 已生成 ${rows.length} 条 SKU`);
+      } catch(e) {
+        showFlash("生成失败：" + e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "生成 Excel";
+      }
+    });
+
+    $("skuDownload").addEventListener("click", async () => {
+      if (!_skuFilename) return;
+      try {
+        const resp = await fetch(PROXY_BASE + "/api/sku/download/" + encodeURIComponent(_skuFilename));
+        if (!resp.ok) throw new Error("下载失败");
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = _skuFilename;
+        a.click(); URL.revokeObjectURL(url);
+      } catch(e) { showFlash("下载失败：" + e.message, true); }
+    });
+
+    $("skuUploadFms").addEventListener("click", () => {
+      window.open("https://fms.mihoyo.com/fms-cc/configs/common/sku_software/update", "_blank");
+      $("skuUploadStatus").textContent = "💡 已打开 FMS 导入页，请点击「导入更新」上传下载好的 Excel 文件。";
+    });
+
+    // 初始化一行空行
+    skuAddRow();
+
+  </script>
+
+  <script>
+    // Patch: update sidebar badge for todo tab
+    const _origRenderTodo = window._origRenderTodo;
+    document.addEventListener("DOMContentLoaded", () => {
+      const badge = document.getElementById("badgeTodo");
+      const observer = new MutationObserver(() => {
+        const c1 = parseInt(document.getElementById("countProxy")?.textContent || 0);
+        const c2 = parseInt(document.getElementById("countCollective")?.textContent || 0);
+        const c3 = parseInt(document.getElementById("countVcc")?.textContent || 0);
+        if (badge) badge.textContent = c1 + c2 + c3 || "–";
+      });
+      ["countProxy","countCollective","countVcc"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el, { childList: true, characterData: true, subtree: true });
+      });
+    });
+  </script>
+
+</body>
+</html>
