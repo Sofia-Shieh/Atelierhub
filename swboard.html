@@ -1411,6 +1411,189 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ══════════════════════════════════════════
+       PROCUREMENT ARCHIVE PANEL (采购档案)
+    ══════════════════════════════════════════ */
+    .arc-toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+    .arc-toolbar .arc-search { flex: 1 1 260px; }
+    .arc-toolbar select { flex: 0 0 150px; }
+
+    .arc-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--border-2);
+      border-radius: var(--r12);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-xs);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .arc-card:hover { border-color: var(--border-2); box-shadow: var(--shadow-sm); }
+    .arc-card.s-quoting     { border-left-color: var(--amber); }
+    .arc-card.s-negotiating { border-left-color: var(--primary); }
+    .arc-card.s-pending     { border-left-color: var(--cyan); }
+    .arc-card.s-agreed      { border-left-color: var(--green); }
+    .arc-card.s-signed      { border-left-color: var(--green); }
+    .arc-card.s-dropped     { border-left-color: var(--text-3); opacity: 0.72; }
+
+    .arc-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .arc-head:hover .collapse-arrow { opacity: 1; }
+    .arc-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.2px;
+      margin-bottom: 5px;
+      line-height: 1.3;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .arc-title .arc-vendor { font-weight: 500; color: var(--text-3); font-size: 12.5px; }
+
+    .arc-money {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 4px 10px;
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 5px;
+    }
+    .arc-money b { font-family: var(--mono); font-weight: 600; color: var(--text-1); font-size: 12.5px; }
+    .arc-money .arc-strike { text-decoration: line-through; color: var(--text-3); font-weight: 500; }
+    .arc-save {
+      color: var(--green);
+      background: var(--green-light);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: 6px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .arc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .arc-badge.quoting     { color: #92400E; background: var(--amber-light);  border-color: rgba(245,158,11,0.2); }
+    .arc-badge.negotiating { color: var(--primary); background: var(--primary-light); border-color: rgba(79,70,229,0.2); }
+    .arc-badge.pending     { color: #155E75; background: var(--cyan-light);   border-color: rgba(6,182,212,0.25); }
+    .arc-badge.agreed,
+    .arc-badge.signed      { color: #065F46; background: var(--green-light);  border-color: rgba(16,185,129,0.2); }
+    .arc-badge.dropped     { color: var(--text-3); background: var(--surface-3); border-color: var(--border); }
+    .arc-badge.due         { color: #991B1B; background: var(--red-light);    border-color: rgba(239,68,68,0.2); }
+    .arc-badge.way         { color: #5B21B6; background: var(--violet-light); border-color: rgba(139,92,246,0.2); }
+
+    .arc-body { display: none; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .arc-card.expanded .arc-body { display: block; }
+    .arc-card.expanded .collapse-arrow { transform: rotate(180deg); opacity: 0.8; }
+
+    .arc-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 14px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .arc-section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* 记录时间线 */
+    .arc-timeline { display: flex; flex-direction: column; gap: 0; padding-left: 4px; }
+    .arc-tl {
+      position: relative;
+      padding: 0 0 14px 20px;
+      border-left: 1px solid var(--border-2);
+    }
+    .arc-tl:last-child { border-left-color: transparent; padding-bottom: 0; }
+    .arc-tl::before {
+      content: '';
+      position: absolute;
+      left: -4.5px;
+      top: 5px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--border-3);
+    }
+    .arc-tl.t-quote::before     { border-color: var(--primary); }
+    .arc-tl.t-talk::before      { border-color: var(--cyan); }
+    .arc-tl.t-negotiate::before { border-color: var(--violet); }
+    .arc-tl.t-email::before     { border-color: var(--text-3); }
+    .arc-tl.t-decision::before  { border-color: var(--green); }
+
+    .arc-tl-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin-bottom: 4px;
+    }
+    .arc-tl-date { font-size: 11.5px; font-family: var(--mono); color: var(--text-3); }
+    .arc-tl-meta { font-size: 11.5px; color: var(--text-3); }
+    .arc-tl-amount { font-size: 12px; font-family: var(--mono); font-weight: 700; color: var(--text-1); }
+    .arc-tl-text {
+      font-size: 12.5px;
+      color: var(--text-2);
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .arc-tl-actions { display: flex; gap: 6px; margin-left: auto; }
+    .arc-tl-del {
+      background: transparent;
+      border: none;
+      color: var(--text-3);
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0 4px;
+      border-radius: var(--r4);
+    }
+    .arc-tl-del:hover { color: var(--red); background: var(--red-light); }
+
+    .arc-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+
+    /* 表单 */
+    .arc-form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+    .arc-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .arc-field.span2 { grid-column: span 2; }
+    .arc-field.span3 { grid-column: 1 / -1; }
+    .arc-field label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .arc-field label .req { color: var(--red); }
+    .arc-field textarea {
+      min-height: 76px;
+      font-family: var(--sans);
+      font-size: 13px;
+    }
+    .arc-modal-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .arc-modal-foot .arc-foot-right { margin-left: auto; display: flex; gap: 8px; }
+    .arc-modal-hint { font-size: 12px; color: var(--text-3); }
+
+    /* ══════════════════════════════════════════
        RESPONSIVE
     ══════════════════════════════════════════ */
     @media (max-width: 960px) {
@@ -1421,6 +1604,8 @@
       .kpi-row { grid-template-columns: repeat(2, 1fr); }
       .summary-list { grid-template-columns: 1fr; }
       .rule-grid { grid-template-columns: 1fr; }
+      .arc-form-grid { grid-template-columns: 1fr; }
+      .arc-field.span2 { grid-column: auto; }
     }
 
     /* ══════════════════════════════════════════
@@ -1555,6 +1740,12 @@
       软件聚合
     </button>
 
+    <button class="tab" data-tab="archive">
+      <svg class="tab-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5.5h14v9a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 012 14.5v-9z"/><path d="M2.5 2h13a.5.5 0 01.5.5v3H2v-3a.5.5 0 01.5-.5z"/><path d="M7 9h4"/></svg>
+      采购档案
+      <span class="tab-badge" id="badgeArchive">–</span>
+    </button>
+
     <button class="tab" data-tab="sku">
       <svg class="tab-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="14" height="3" rx="1.5"/><rect x="2" y="8" width="14" height="3" rx="1.5"/><rect x="2" y="13" width="8" height="2" rx="1"/></svg>
       创建 SKU
@@ -1682,6 +1873,61 @@
       </div>
       <div class="page-body">
         <div class="row-list" id="softwareSummary"></div>
+      </div>
+    </section>
+
+    <!-- ── TAB: 采购档案 ── -->
+    <section class="panel" data-panel="archive">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>采购档案</h1>
+          <p>按软件建档，记录每一轮报价、洽谈与协商过程，形成可追溯的谈判档案</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          <button type="button" class="btn btn-ghost" id="arcImportBtn">⬆ 导入</button>
+          <button type="button" class="btn btn-secondary" id="arcExportBtn">⬇ 导出 JSON</button>
+          <button type="button" class="btn btn-primary" id="arcNewBtn">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a1 1 0 011 1v4h4a1 1 0 010 2H9v4a1 1 0 01-2 0V9H3a1 1 0 010-2h4V3a1 1 0 011-1z"/></svg>
+            新建档案
+          </button>
+        </div>
+      </div>
+      <div class="page-body">
+        <input type="file" id="arcImportFile" accept="application/json,.json" style="display:none" />
+
+        <!-- KPI -->
+        <div class="kpi-row" id="arcMetrics"></div>
+
+        <!-- 筛选 -->
+        <div class="arc-toolbar">
+          <input class="arc-search" id="arcSearch" placeholder="搜索软件 / 厂商 / 联系人 / 单号 / 记录内容" />
+          <select id="arcStatusFilter">
+            <option value="all">全部状态</option>
+            <option value="open">仅进行中</option>
+            <option value="quoting">询价中</option>
+            <option value="negotiating">洽谈中</option>
+            <option value="pending">待对方回复</option>
+            <option value="agreed">已达成</option>
+            <option value="signed">已下单 / 签约</option>
+            <option value="dropped">已放弃</option>
+          </select>
+          <select id="arcWayFilter">
+            <option value="all">全部采购方式</option>
+            <option value="proxy">代采</option>
+            <option value="collective">集采</option>
+            <option value="vcc">VCC 直付</option>
+            <option value="direct">直采</option>
+            <option value="other">其他</option>
+          </select>
+          <select id="arcSort">
+            <option value="updated">按最近更新</option>
+            <option value="follow">按下次跟进</option>
+            <option value="amount">按金额</option>
+            <option value="created">按建档时间</option>
+          </select>
+        </div>
+
+        <div class="row-list" id="arcList"></div>
       </div>
     </section>
 
@@ -1850,6 +2096,202 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button type="button" id="prSubmitBtn" class="btn btn-primary">🚀 创建草稿并打开编辑页</button>
       <button type="button" class="btn btn-ghost" id="prDraftBtn" style="display:none">暂存草稿</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 采购档案：建档 / 编辑弹窗 ── -->
+<div class="modal" id="arcModal">
+  <div class="modal-card" style="width:min(760px,calc(100vw - 32px));">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="arcModalTitle">新建采购档案</h2>
+        <p class="modal-copy">一款软件一个档案；报价、洽谈、协商过程用「记录」按时间线追加。</p>
+      </div>
+      <button type="button" class="btn btn-ghost" id="arcModalClose" style="flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M12.7 4.7l-1.4-1.4L8 6.6 4.7 3.3 3.3 4.7 6.6 8l-3.3 3.3 1.4 1.4L8 9.4l3.3 3.3 1.4-1.4L9.4 8z"/></svg>
+        关闭
+      </button>
+    </div>
+
+    <div class="arc-form-grid">
+      <div class="arc-field">
+        <label for="arcFName">软件名称 <span class="req">*</span></label>
+        <input id="arcFName" list="arcSkuOptions" placeholder="例：Figma Professional" />
+        <datalist id="arcSkuOptions"></datalist>
+      </div>
+      <div class="arc-field">
+        <label for="arcFVendor">厂商 / 供应商</label>
+        <input id="arcFVendor" list="arcVendorOptions" placeholder="例：Figma Inc. / 上海某某代理" />
+        <datalist id="arcVendorOptions"></datalist>
+      </div>
+      <div class="arc-field">
+        <label for="arcFWay">采购方式</label>
+        <select id="arcFWay">
+          <option value="proxy">代采</option>
+          <option value="collective">集采</option>
+          <option value="vcc">VCC 直付</option>
+          <option value="direct">直采</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+
+      <div class="arc-field">
+        <label for="arcFStatus">当前状态</label>
+        <select id="arcFStatus">
+          <option value="quoting">询价中</option>
+          <option value="negotiating">洽谈中</option>
+          <option value="pending">待对方回复</option>
+          <option value="agreed">已达成</option>
+          <option value="signed">已下单 / 签约</option>
+          <option value="dropped">已放弃</option>
+        </select>
+      </div>
+      <div class="arc-field">
+        <label for="arcFOwner">我方负责人</label>
+        <input id="arcFOwner" placeholder="例：张三" />
+      </div>
+      <div class="arc-field">
+        <label for="arcFFollow">下次跟进日期</label>
+        <input type="date" id="arcFFollow" />
+      </div>
+
+      <div class="arc-field">
+        <label for="arcFContact">对方联系人</label>
+        <input id="arcFContact" placeholder="例：李四（销售）" />
+      </div>
+      <div class="arc-field span2">
+        <label for="arcFContactInfo">联系方式</label>
+        <input id="arcFContactInfo" placeholder="邮箱 / 电话 / 企微" />
+      </div>
+
+      <div class="arc-field">
+        <label for="arcFCurrency">币种</label>
+        <select id="arcFCurrency">
+          <option value="CNY">CNY</option>
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="JPY">JPY</option>
+        </select>
+      </div>
+      <div class="arc-field">
+        <label for="arcFQty">数量 / 席位</label>
+        <input type="number" id="arcFQty" min="0" step="1" placeholder="例：20" />
+      </div>
+      <div class="arc-field">
+        <label for="arcFCycle">计费周期</label>
+        <select id="arcFCycle">
+          <option value="year">年订阅</option>
+          <option value="month">月订阅</option>
+          <option value="perpetual">永久授权</option>
+          <option value="once">一次性</option>
+        </select>
+      </div>
+
+      <div class="arc-field">
+        <label for="arcFListPrice">首次报价</label>
+        <input type="number" id="arcFListPrice" min="0" step="0.01" placeholder="对方最初开价" />
+      </div>
+      <div class="arc-field">
+        <label for="arcFQuotePrice">当前报价</label>
+        <input type="number" id="arcFQuotePrice" min="0" step="0.01" placeholder="最新一轮报价" />
+      </div>
+      <div class="arc-field">
+        <label for="arcFFinalPrice">成交价</label>
+        <input type="number" id="arcFFinalPrice" min="0" step="0.01" placeholder="谈定后填写" />
+      </div>
+
+      <div class="arc-field">
+        <label for="arcFReq">关联申请单 REQ</label>
+        <input id="arcFReq" placeholder="REQ2026…" />
+      </div>
+      <div class="arc-field">
+        <label for="arcFPr">关联需求单 PR</label>
+        <input id="arcFPr" placeholder="PR2605…" />
+      </div>
+      <div class="arc-field">
+        <label for="arcFDept">受益部门 / 需求方</label>
+        <input id="arcFDept" placeholder="例：崩坏：星穹铁道>程序组" />
+      </div>
+
+      <div class="arc-field span3">
+        <label for="arcFNote">备注</label>
+        <textarea id="arcFNote" placeholder="合同要点、付款方式、License 归属、风险点等"></textarea>
+      </div>
+    </div>
+
+    <div class="arc-modal-foot">
+      <button type="button" class="btn btn-danger" id="arcDeleteBtn" style="display:none;">删除档案</button>
+      <div class="arc-foot-right">
+        <button type="button" class="btn btn-ghost" id="arcCancelBtn">取消</button>
+        <button type="button" class="btn btn-primary" id="arcSaveBtn">保存档案</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 采购档案：新增记录弹窗 ── -->
+<div class="modal" id="arcRecModal">
+  <div class="modal-card" style="width:min(620px,calc(100vw - 32px));">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">添加过程记录</h2>
+        <p class="modal-copy" id="arcRecTarget">记录一次报价 / 洽谈 / 协商的结果。</p>
+      </div>
+      <button type="button" class="btn btn-ghost" id="arcRecClose" style="flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M12.7 4.7l-1.4-1.4L8 6.6 4.7 3.3 3.3 4.7 6.6 8l-3.3 3.3 1.4 1.4L8 9.4l3.3 3.3 1.4-1.4L9.4 8z"/></svg>
+        关闭
+      </button>
+    </div>
+
+    <div class="arc-form-grid">
+      <div class="arc-field">
+        <label for="arcRType">记录类型</label>
+        <select id="arcRType">
+          <option value="quote">💰 报价</option>
+          <option value="talk">💬 洽谈</option>
+          <option value="negotiate">🤝 协商 / 议价</option>
+          <option value="email">✉️ 邮件 / 函件</option>
+          <option value="decision">✅ 结论 / 决策</option>
+        </select>
+      </div>
+      <div class="arc-field">
+        <label for="arcRDate">日期</label>
+        <input type="date" id="arcRDate" />
+      </div>
+      <div class="arc-field">
+        <label for="arcRChannel">沟通渠道</label>
+        <select id="arcRChannel">
+          <option value="邮件">邮件</option>
+          <option value="企微">企微 / IM</option>
+          <option value="电话">电话</option>
+          <option value="会议">会议</option>
+          <option value="线下">线下</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+
+      <div class="arc-field span2">
+        <label for="arcRParty">参与人 / 对方</label>
+        <input id="arcRParty" placeholder="例：我方张三 · 对方李四" />
+      </div>
+      <div class="arc-field">
+        <label for="arcRAmount">涉及金额</label>
+        <input type="number" id="arcRAmount" min="0" step="0.01" placeholder="报价 / 议价结果" />
+      </div>
+
+      <div class="arc-field span3">
+        <label for="arcRContent">记录内容 <span class="req">*</span></label>
+        <textarea id="arcRContent" placeholder="对方开价 $180/席位/年，要求 30 席起订；我方提出按 20 席采购并要求 8 折，对方回复需内部审批…"></textarea>
+      </div>
+    </div>
+
+    <div class="arc-modal-foot">
+      <span class="arc-modal-hint" id="arcRecHint">填了金额会自动回填档案：结论类写入「成交价」，其余写入「当前报价」。</span>
+      <div class="arc-foot-right">
+        <button type="button" class="btn btn-ghost" id="arcRecCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="arcRecSave">保存记录</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3728,6 +4170,663 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
 
     // 初始化一行空行
     skuAddRow();
+
+    // ══════════════════════════════════════════════════════════════
+    // 采购档案板块（报价 / 洽谈 / 协商记录）
+    // ══════════════════════════════════════════════════════════════
+    const ARCHIVE_STORAGE_KEY = "sam-procurement-archive-v1";
+
+    const ARC_STATUS = {
+      quoting:     "询价中",
+      negotiating: "洽谈中",
+      pending:     "待对方回复",
+      agreed:      "已达成",
+      signed:      "已下单 / 签约",
+      dropped:     "已放弃",
+    };
+    const ARC_OPEN_STATUS = ["quoting", "negotiating", "pending"];
+    const ARC_WAY    = { proxy: "代采", collective: "集采", vcc: "VCC 直付", direct: "直采", other: "其他" };
+    const ARC_CYCLE  = { year: "年订阅", month: "月订阅", perpetual: "永久授权", once: "一次性" };
+    const ARC_CYCLE_UNIT = { year: "年", month: "月", perpetual: "永久", once: "次" };
+    const ARC_RECORD_TYPES = {
+      quote:     { text: "报价",      icon: "💰" },
+      talk:      { text: "洽谈",      icon: "💬" },
+      negotiate: { text: "协商 / 议价", icon: "🤝" },
+      email:     { text: "邮件 / 函件", icon: "✉️" },
+      decision:  { text: "结论 / 决策", icon: "✅" },
+    };
+    const ARC_SYMBOL = { CNY: "¥", USD: "$", EUR: "€", JPY: "¥" };
+
+    const arcState = {
+      archives: [],
+      search: "",
+      status: "all",
+      way: "all",
+      sort: "updated",
+      expanded: new Set(),
+      editingId: null,
+      recordFor: null,
+      backendOk: false,
+    };
+
+    function arcUid(prefix) {
+      return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    }
+
+    function arcNum(value) {
+      if (value === "" || value === null || value === undefined) return null;
+      const num = Number(value);
+      return Number.isFinite(num) ? num : null;
+    }
+
+    function arcMoney(currency, amount) {
+      if (amount === null || amount === undefined || amount === "") return "";
+      const symbol = ARC_SYMBOL[currency] || "";
+      const text = Number(amount).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+      return symbol ? `${symbol}${text}` : `${currency || ""} ${text}`.trim();
+    }
+
+    function arcTodayStr() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    }
+
+    /** 有效单价：成交价 > 当前报价 > 首次报价 */
+    function arcEffectivePrice(archive) {
+      return archive.finalPrice ?? archive.quotePrice ?? archive.listPrice ?? null;
+    }
+
+    function arcIsOpen(archive) {
+      return ARC_OPEN_STATUS.includes(archive.status);
+    }
+
+    function arcIsDue(archive) {
+      return !!archive.nextFollowUp && arcIsOpen(archive) && archive.nextFollowUp <= arcTodayStr();
+    }
+
+    function arcNormalize(archive) {
+      return {
+        id:            archive.id || arcUid("ARC"),
+        skuName:       archive.skuName || "",
+        vendor:        archive.vendor || "",
+        way:           ARC_WAY[archive.way] ? archive.way : "proxy",
+        status:        ARC_STATUS[archive.status] ? archive.status : "quoting",
+        owner:         archive.owner || "",
+        contact:       archive.contact || "",
+        contactInfo:   archive.contactInfo || "",
+        currency:      archive.currency || "CNY",
+        quantity:      arcNum(archive.quantity),
+        cycle:         ARC_CYCLE[archive.cycle] ? archive.cycle : "year",
+        listPrice:     arcNum(archive.listPrice),
+        quotePrice:    arcNum(archive.quotePrice),
+        finalPrice:    arcNum(archive.finalPrice),
+        reqCode:       archive.reqCode || "",
+        prCode:        archive.prCode || "",
+        dept:          archive.dept || "",
+        nextFollowUp:  archive.nextFollowUp || "",
+        note:          archive.note || "",
+        createdAt:     archive.createdAt || new Date().toISOString(),
+        updatedAt:     archive.updatedAt || archive.createdAt || new Date().toISOString(),
+        records: (Array.isArray(archive.records) ? archive.records : []).map((record) => ({
+          id:        record.id || arcUid("REC"),
+          type:      ARC_RECORD_TYPES[record.type] ? record.type : "talk",
+          date:      record.date || arcTodayStr(),
+          channel:   record.channel || "",
+          party:     record.party || "",
+          amount:    arcNum(record.amount),
+          currency:  record.currency || archive.currency || "CNY",
+          content:   record.content || "",
+          createdAt: record.createdAt || new Date().toISOString(),
+        })),
+      };
+    }
+
+    /** 同 id 取 updatedAt 较新的一份 */
+    function arcMerge(base, incoming) {
+      const map = new Map(base.map((item) => [item.id, item]));
+      incoming.forEach((item) => {
+        const exist = map.get(item.id);
+        if (!exist || String(item.updatedAt || "") > String(exist.updatedAt || "")) map.set(item.id, item);
+      });
+      return [...map.values()];
+    }
+
+    async function arcLoad() {
+      let local = [];
+      try {
+        const raw = await storageBridge.get(ARCHIVE_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const list = Array.isArray(parsed) ? parsed : parsed?.archives;
+          if (Array.isArray(list)) local = list.map(arcNormalize);
+        }
+      } catch (error) {
+        // 本地数据损坏，按空档案继续
+      }
+
+      try {
+        const resp = await fetch(PROXY_BASE + "/api/archive");
+        if (resp.ok) {
+          const result = await resp.json();
+          if (result && result.ok && Array.isArray(result.archives)) {
+            arcState.backendOk = true;
+            local = arcMerge(local, result.archives.map(arcNormalize));
+          }
+        }
+      } catch (error) {
+        // 后端未实现该接口时保持纯本地模式
+      }
+
+      arcState.archives = local;
+      arcRenderAll();
+    }
+
+    async function arcSave(flashMessage) {
+      const payload = { updatedAt: new Date().toISOString(), archives: arcState.archives };
+      await storageBridge.set(ARCHIVE_STORAGE_KEY, JSON.stringify(payload));
+      if (arcState.backendOk) {
+        fetch(PROXY_BASE + "/api/archive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).catch(() => { arcState.backendOk = false; });
+      }
+      arcRenderAll();
+      if (flashMessage) showFlash(flashMessage);
+    }
+
+    function arcFind(id) {
+      return arcState.archives.find((item) => item.id === id) || null;
+    }
+
+    function arcVisible() {
+      const search = normalizeText(arcState.search);
+      const list = arcState.archives.filter((archive) => {
+        const statusHit = arcState.status === "all"
+          || (arcState.status === "open" && arcIsOpen(archive))
+          || archive.status === arcState.status;
+        const wayHit = arcState.way === "all" || archive.way === arcState.way;
+        if (!statusHit || !wayHit) return false;
+        if (!search) return true;
+        const haystack = [
+          archive.skuName, archive.vendor, archive.owner, archive.contact, archive.contactInfo,
+          archive.reqCode, archive.prCode, archive.dept, archive.note,
+          ...archive.records.map((record) => `${record.content}${record.party}${record.channel}`),
+        ];
+        return haystack.some((item) => normalizeText(item).includes(search));
+      });
+
+      const sorters = {
+        updated: (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)),
+        created: (a, b) => String(b.createdAt).localeCompare(String(a.createdAt)),
+        amount:  (a, b) => (arcEffectivePrice(b) ?? -1) - (arcEffectivePrice(a) ?? -1),
+        follow:  (a, b) => (a.nextFollowUp || "9999-12-31").localeCompare(b.nextFollowUp || "9999-12-31"),
+      };
+      return list.sort(sorters[arcState.sort] || sorters.updated);
+    }
+
+    function arcRenderMetrics() {
+      const all = arcState.archives;
+      const open = all.filter(arcIsOpen);
+      const due = all.filter(arcIsDue);
+      const byStatus = (key) => all.filter((archive) => archive.status === key).length;
+
+      // 议价节省：首次报价与成交价都填了才计入，按币种分别汇总
+      const savedByCurrency = new Map();
+      all.forEach((archive) => {
+        if (archive.listPrice === null || archive.finalPrice === null) return;
+        const qty = archive.quantity && archive.quantity > 0 ? archive.quantity : 1;
+        const delta = (archive.listPrice - archive.finalPrice) * qty;
+        if (delta <= 0) return;
+        savedByCurrency.set(archive.currency, (savedByCurrency.get(archive.currency) || 0) + delta);
+      });
+      const savedText = savedByCurrency.size
+        ? [...savedByCurrency.entries()].map(([currency, value]) => arcMoney(currency, value)).join(" · ")
+        : "0";
+
+      const cards = [
+        {
+          cls: "", label: "档案总数", value: all.length,
+          note: `进行中 ${open.length} · 已达成 ${byStatus("agreed") + byStatus("signed")} · 已放弃 ${byStatus("dropped")}`,
+        },
+        {
+          cls: "wait", label: "洽谈进行中", value: open.length,
+          note: `询价 ${byStatus("quoting")} · 洽谈 ${byStatus("negotiating")} · 待回复 ${byStatus("pending")}`,
+        },
+        {
+          cls: "stock", label: "待跟进", value: due.length,
+          note: due.length ? `最早：${due.map((item) => item.nextFollowUp).sort()[0]}` : "暂无到期跟进",
+        },
+        {
+          cls: "complete", label: "议价节省", value: savedText,
+          note: "首次报价与成交价之差（含数量）",
+        },
+      ];
+
+      $("arcMetrics").innerHTML = cards.map((card) => `
+        <div class="metric-card ${card.cls}">
+          <div class="metric-label">${escapeHtml(card.label)}</div>
+          <div class="metric-value" style="${String(card.value).length > 6 ? "font-size:20px;" : ""}">${escapeHtml(card.value)}</div>
+          <div class="metric-note">${escapeHtml(card.note)}</div>
+        </div>
+      `).join("");
+
+      const badge = $("badgeArchive");
+      if (badge) {
+        badge.textContent = all.length || "–";
+        badge.classList.toggle("amber", due.length > 0);
+      }
+    }
+
+    function arcRenderTimeline(archive) {
+      if (!archive.records.length) {
+        return `<div class="small" style="color:var(--text-3);">暂无过程记录，点击下方「添加记录」记录一次报价或洽谈。</div>`;
+      }
+      const records = [...archive.records].sort((a, b) =>
+        `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`));
+      return `<div class="arc-timeline">${records.map((record) => {
+        const conf = ARC_RECORD_TYPES[record.type] || ARC_RECORD_TYPES.talk;
+        const amount = record.amount === null ? "" : arcMoney(record.currency || archive.currency, record.amount);
+        return `
+          <div class="arc-tl t-${record.type}">
+            <div class="arc-tl-head">
+              <span class="arc-badge way">${conf.icon} ${escapeHtml(conf.text)}</span>
+              <span class="arc-tl-date">${escapeHtml(record.date)}</span>
+              ${record.channel ? `<span class="arc-tl-meta">via ${escapeHtml(record.channel)}</span>` : ""}
+              ${record.party ? `<span class="arc-tl-meta">👥 ${escapeHtml(record.party)}</span>` : ""}
+              ${amount ? `<span class="arc-tl-amount">${escapeHtml(amount)}</span>` : ""}
+              <span class="arc-tl-actions">
+                <button class="arc-tl-del" title="删除该记录"
+                  data-arc-del-rec="${escapeHtml(record.id)}" data-arc-id="${escapeHtml(archive.id)}">✕</button>
+              </span>
+            </div>
+            <div class="arc-tl-text">${escapeHtml(record.content)}</div>
+          </div>`;
+      }).join("")}</div>`;
+    }
+
+    function arcRenderCard(archive) {
+      const expanded = arcState.expanded.has(archive.id);
+      const unit = ARC_CYCLE_UNIT[archive.cycle] || "";
+      const current = arcEffectivePrice(archive);
+      const currentLabel = archive.finalPrice !== null ? "成交价" : "当前报价";
+      const showStrike = archive.listPrice !== null && current !== null && current < archive.listPrice;
+      const cutPct = showStrike ? Math.round((1 - current / archive.listPrice) * 100) : 0;
+      const qty = archive.quantity && archive.quantity > 0 ? archive.quantity : null;
+      const total = current !== null && qty ? current * qty : null;
+
+      const facts = [
+        ["首次报价", archive.listPrice === null ? "--" : arcMoney(archive.currency, archive.listPrice)],
+        ["当前报价", archive.quotePrice === null ? "--" : arcMoney(archive.currency, archive.quotePrice)],
+        ["成交价", archive.finalPrice === null ? "--" : arcMoney(archive.currency, archive.finalPrice)],
+        ["合计金额", total === null ? "--" : `${arcMoney(archive.currency, total)}（${qty} × ${ARC_CYCLE[archive.cycle]}）`],
+        ["数量 / 席位", qty ? `${qty}` : "--"],
+        ["计费周期", ARC_CYCLE[archive.cycle] || "--"],
+        ["下次跟进", archive.nextFollowUp || "--"],
+        ["受益部门", archive.dept || "--"],
+      ];
+
+      return `
+        <article class="arc-card s-${archive.status} ${expanded ? "expanded" : ""}" data-arc-card="${escapeHtml(archive.id)}">
+          <div class="arc-head" data-arc-toggle="${escapeHtml(archive.id)}">
+            <div style="min-width:0;">
+              <div class="arc-title">
+                ${escapeHtml(archive.skuName || "未命名软件")}
+                ${archive.vendor ? `<span class="arc-vendor">· ${escapeHtml(archive.vendor)}</span>` : ""}
+              </div>
+              <div class="meta">
+                <span>🧭 ${escapeHtml(ARC_WAY[archive.way] || "其他")}</span>
+                ${archive.owner ? `<span>🙋 ${escapeHtml(archive.owner)}</span>` : ""}
+                ${archive.contact ? `<span>📇 ${escapeHtml(archive.contact)}</span>` : ""}
+                ${archive.reqCode ? `<span data-copy="${escapeHtml(archive.reqCode)}" style="cursor:pointer;">📄 ${escapeHtml(archive.reqCode)}</span>` : ""}
+                ${archive.prCode ? `<span data-copy="${escapeHtml(archive.prCode)}" style="cursor:pointer;">🧾 ${escapeHtml(archive.prCode)}</span>` : ""}
+                <span>🕑 更新于 ${escapeHtml(daysSince(archive.updatedAt) || "刚刚")}前</span>
+              </div>
+              <div class="arc-money">
+                ${showStrike ? `<span class="arc-strike">${escapeHtml(arcMoney(archive.currency, archive.listPrice))}</span>` : ""}
+                <span>${escapeHtml(currentLabel)} <b>${escapeHtml(current === null ? "待报价" : arcMoney(archive.currency, current))}</b>${current !== null && unit ? `<span style="color:var(--text-3);font-weight:500;"> / ${escapeHtml(unit)}</span>` : ""}</span>
+                ${qty ? `<span>× ${qty}</span>` : ""}
+                ${showStrike ? `<span class="arc-save">↓ ${cutPct}%</span>` : ""}
+              </div>
+            </div>
+            <div class="badge-row">
+              <span class="arc-badge ${archive.status}">${escapeHtml(ARC_STATUS[archive.status])}</span>
+              ${arcIsDue(archive) ? `<span class="arc-badge due">⏰ 待跟进 ${escapeHtml(archive.nextFollowUp)}</span>` : ""}
+              <span class="arc-badge way">${archive.records.length} 条记录</span>
+              <span class="collapse-arrow">▼</span>
+            </div>
+          </div>
+
+          <div class="arc-body">
+            <div class="fact-grid" style="grid-template-columns:repeat(4,1fr);">
+              ${facts.map(([label, value]) => `
+                <div class="fact">
+                  <div class="fact-label">${escapeHtml(label)}</div>
+                  <div class="fact-value">${escapeHtml(value)}</div>
+                </div>`).join("")}
+            </div>
+
+            ${archive.contactInfo ? `<div class="small">联系方式：${escapeHtml(archive.contactInfo)}</div>` : ""}
+            ${archive.note ? `<div class="arc-section-label">备注</div><div class="arc-tl-text">${escapeHtml(archive.note)}</div>` : ""}
+
+            <div class="arc-section-label">过程记录 · ${archive.records.length}</div>
+            ${arcRenderTimeline(archive)}
+
+            <div class="arc-actions">
+              <button type="button" class="btn btn-primary" data-arc-add-rec="${escapeHtml(archive.id)}">+ 添加记录</button>
+              <button type="button" class="btn btn-secondary" data-arc-edit="${escapeHtml(archive.id)}">编辑档案</button>
+              <button type="button" class="btn btn-ghost" data-arc-summary="${escapeHtml(archive.id)}">复制摘要</button>
+            </div>
+          </div>
+        </article>`;
+    }
+
+    function arcRenderList() {
+      const list = arcVisible();
+      const container = $("arcList");
+      if (!list.length) {
+        const hasAny = arcState.archives.length > 0;
+        container.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">🗂️</div>
+            <div class="empty-text">${hasAny ? "没有符合筛选条件的档案" : "还没有采购档案"}</div>
+            <div class="empty-sub">${hasAny ? "调整上方筛选条件再试" : "点击右上角「新建档案」，把报价、洽谈、协商过程记录下来"}</div>
+          </div>`;
+        return;
+      }
+      container.innerHTML = list.map(arcRenderCard).join("");
+    }
+
+    function arcRenderDatalists() {
+      const rows = state.snapshot?.rows || [];
+      const skus = [...new Set([
+        ...rows.map((row) => row.skuName).filter(Boolean),
+        ...arcState.archives.map((archive) => archive.skuName).filter(Boolean),
+      ])];
+      const vendors = [...new Set([
+        ...rows.map((row) => row.vendor).filter(Boolean),
+        ...arcState.archives.map((archive) => archive.vendor).filter(Boolean),
+      ])];
+      const toOptions = (items) => items.map((item) => `<option value="${escapeHtml(item)}"></option>`).join("");
+      $("arcSkuOptions").innerHTML = toOptions(skus);
+      $("arcVendorOptions").innerHTML = toOptions(vendors);
+    }
+
+    function arcRenderAll() {
+      arcRenderMetrics();
+      arcRenderList();
+      arcRenderDatalists();
+    }
+
+    // ── 建档 / 编辑弹窗 ──────────────────────────────────────────
+    function arcOpenModal(id) {
+      const archive = id ? arcFind(id) : null;
+      arcState.editingId = archive ? archive.id : null;
+      $("arcModalTitle").textContent = archive ? "编辑采购档案" : "新建采购档案";
+      $("arcDeleteBtn").style.display = archive ? "inline-flex" : "none";
+
+      const value = (key, fallback = "") => (archive && archive[key] !== null && archive[key] !== undefined ? archive[key] : fallback);
+      $("arcFName").value        = value("skuName");
+      $("arcFVendor").value      = value("vendor");
+      $("arcFWay").value         = value("way", "proxy");
+      $("arcFStatus").value      = value("status", "quoting");
+      $("arcFOwner").value       = value("owner");
+      $("arcFFollow").value      = value("nextFollowUp");
+      $("arcFContact").value     = value("contact");
+      $("arcFContactInfo").value = value("contactInfo");
+      $("arcFCurrency").value    = value("currency", "CNY");
+      $("arcFQty").value         = value("quantity");
+      $("arcFCycle").value       = value("cycle", "year");
+      $("arcFListPrice").value   = value("listPrice");
+      $("arcFQuotePrice").value  = value("quotePrice");
+      $("arcFFinalPrice").value  = value("finalPrice");
+      $("arcFReq").value         = value("reqCode");
+      $("arcFPr").value          = value("prCode");
+      $("arcFDept").value        = value("dept");
+      $("arcFNote").value        = value("note");
+
+      arcRenderDatalists();
+      $("arcModal").classList.add("open");
+      window.setTimeout(() => $("arcFName").focus(), 30);
+    }
+
+    function arcCloseModal() {
+      $("arcModal").classList.remove("open");
+      arcState.editingId = null;
+    }
+
+    async function arcSubmitForm() {
+      const skuName = $("arcFName").value.trim();
+      if (!skuName) { showFlash("请填写软件名称。"); $("arcFName").focus(); return; }
+
+      const existing = arcState.editingId ? arcFind(arcState.editingId) : null;
+      const now = new Date().toISOString();
+      const next = arcNormalize({
+        ...(existing || {}),
+        id:           existing?.id,
+        skuName,
+        vendor:       $("arcFVendor").value.trim(),
+        way:          $("arcFWay").value,
+        status:       $("arcFStatus").value,
+        owner:        $("arcFOwner").value.trim(),
+        nextFollowUp: $("arcFFollow").value,
+        contact:      $("arcFContact").value.trim(),
+        contactInfo:  $("arcFContactInfo").value.trim(),
+        currency:     $("arcFCurrency").value,
+        quantity:     $("arcFQty").value,
+        cycle:        $("arcFCycle").value,
+        listPrice:    $("arcFListPrice").value,
+        quotePrice:   $("arcFQuotePrice").value,
+        finalPrice:   $("arcFFinalPrice").value,
+        reqCode:      $("arcFReq").value.trim(),
+        prCode:       $("arcFPr").value.trim(),
+        dept:         $("arcFDept").value.trim(),
+        note:         $("arcFNote").value.trim(),
+        records:      existing?.records || [],
+        createdAt:    existing?.createdAt || now,
+        updatedAt:    now,
+      });
+
+      if (existing) {
+        arcState.archives = arcState.archives.map((item) => (item.id === existing.id ? next : item));
+      } else {
+        arcState.archives.unshift(next);
+        arcState.expanded.add(next.id);
+      }
+      arcCloseModal();
+      await arcSave(existing ? "档案已更新。" : "档案已创建。");
+    }
+
+    async function arcDeleteCurrent() {
+      const archive = arcState.editingId ? arcFind(arcState.editingId) : null;
+      if (!archive) return;
+      if (!confirm(`确认删除「${archive.skuName}」的采购档案？其中 ${archive.records.length} 条过程记录会一并删除。`)) return;
+      arcState.archives = arcState.archives.filter((item) => item.id !== archive.id);
+      arcState.expanded.delete(archive.id);
+      arcCloseModal();
+      await arcSave("档案已删除。");
+    }
+
+    // ── 过程记录弹窗 ─────────────────────────────────────────────
+    function arcOpenRecordModal(archiveId) {
+      const archive = arcFind(archiveId);
+      if (!archive) return;
+      arcState.recordFor = archiveId;
+      $("arcRecTarget").textContent = `档案：${archive.skuName}${archive.vendor ? " · " + archive.vendor : ""}`;
+      $("arcRType").value    = "negotiate";
+      $("arcRDate").value    = arcTodayStr();
+      $("arcRChannel").value = "邮件";
+      $("arcRParty").value   = archive.contact ? `我方${archive.owner || ""} · 对方${archive.contact}` : "";
+      $("arcRAmount").value  = "";
+      $("arcRContent").value = "";
+      $("arcRecModal").classList.add("open");
+      window.setTimeout(() => $("arcRContent").focus(), 30);
+    }
+
+    async function arcSubmitRecord() {
+      const archive = arcState.recordFor ? arcFind(arcState.recordFor) : null;
+      if (!archive) return;
+      const content = $("arcRContent").value.trim();
+      if (!content) { showFlash("请填写记录内容。"); $("arcRContent").focus(); return; }
+
+      const type = $("arcRType").value;
+      const amount = arcNum($("arcRAmount").value);
+      const record = {
+        id:        arcUid("REC"),
+        type,
+        date:      $("arcRDate").value || arcTodayStr(),
+        channel:   $("arcRChannel").value,
+        party:     $("arcRParty").value.trim(),
+        amount,
+        currency:  archive.currency,
+        content,
+        createdAt: new Date().toISOString(),
+      };
+      archive.records.push(record);
+
+      // 金额回填：结论写成交价，其余轮次写当前报价；首轮报价同时作为首次报价
+      if (amount !== null) {
+        if (type === "decision") {
+          archive.finalPrice = amount;
+        } else {
+          archive.quotePrice = amount;
+          if (archive.listPrice === null) archive.listPrice = amount;
+        }
+      }
+      archive.updatedAt = new Date().toISOString();
+
+      arcState.expanded.add(archive.id);
+      $("arcRecModal").classList.remove("open");
+      arcState.recordFor = null;
+      await arcSave(`已记录一条「${ARC_RECORD_TYPES[type].text}」。`);
+    }
+
+    async function arcDeleteRecord(archiveId, recordId) {
+      const archive = arcFind(archiveId);
+      if (!archive) return;
+      if (!confirm("确认删除这条过程记录？")) return;
+      archive.records = archive.records.filter((record) => record.id !== recordId);
+      archive.updatedAt = new Date().toISOString();
+      await arcSave("记录已删除。");
+    }
+
+    async function arcCopySummary(archiveId) {
+      const archive = arcFind(archiveId);
+      if (!archive) return;
+      const lines = [
+        `【采购档案】${archive.skuName}${archive.vendor ? " · " + archive.vendor : ""}`,
+        `采购方式：${ARC_WAY[archive.way]} ｜ 状态：${ARC_STATUS[archive.status]}${archive.owner ? " ｜ 负责人：" + archive.owner : ""}`,
+        `报价：首次 ${archive.listPrice === null ? "--" : arcMoney(archive.currency, archive.listPrice)}`
+          + ` ｜ 当前 ${archive.quotePrice === null ? "--" : arcMoney(archive.currency, archive.quotePrice)}`
+          + ` ｜ 成交 ${archive.finalPrice === null ? "--" : arcMoney(archive.currency, archive.finalPrice)}`
+          + ` ｜ ${ARC_CYCLE[archive.cycle]}${archive.quantity ? " × " + archive.quantity : ""}`,
+        archive.reqCode || archive.prCode ? `关联单据：${[archive.reqCode, archive.prCode].filter(Boolean).join(" / ")}` : "",
+        archive.contact ? `对方联系人：${archive.contact}${archive.contactInfo ? "（" + archive.contactInfo + "）" : ""}` : "",
+        "",
+        "过程记录：",
+        ...[...archive.records]
+          .sort((a, b) => `${a.date}${a.createdAt}`.localeCompare(`${b.date}${b.createdAt}`))
+          .map((record) => {
+            const conf = ARC_RECORD_TYPES[record.type] || ARC_RECORD_TYPES.talk;
+            const amount = record.amount === null ? "" : ` ${arcMoney(record.currency || archive.currency, record.amount)}`;
+            return `· ${record.date} [${conf.text}]${record.channel ? " " + record.channel : ""}${amount} ${record.content}`;
+          }),
+        archive.note ? `\n备注：${archive.note}` : "",
+      ].filter((line) => line !== "");
+
+      try {
+        await navigator.clipboard.writeText(lines.join("\n"));
+        showFlash("档案摘要已复制到剪贴板。");
+      } catch (error) {
+        showFlash("复制失败，请手动选择文本。");
+      }
+    }
+
+    function arcExport() {
+      if (!arcState.archives.length) { showFlash("暂无档案可导出。"); return; }
+      const blob = new Blob(
+        [JSON.stringify({ exportedAt: new Date().toISOString(), archives: arcState.archives }, null, 2)],
+        { type: "application/json" },
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `采购档案-${arcTodayStr().replace(/-/g, "")}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showFlash(`已导出 ${arcState.archives.length} 份档案。`);
+    }
+
+    async function arcImportFile(file) {
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const list = Array.isArray(parsed) ? parsed : parsed?.archives;
+        if (!Array.isArray(list)) throw new Error("文件里没有 archives 数组。");
+        const incoming = list.map(arcNormalize);
+        const before = arcState.archives.length;
+        arcState.archives = arcMerge(arcState.archives, incoming);
+        await arcSave(`已导入 ${incoming.length} 份档案（新增 ${arcState.archives.length - before} 份，同 ID 取较新版本）。`);
+      } catch (error) {
+        showFlash("导入失败：" + (error.message || "文件格式不正确"));
+      }
+    }
+
+    // ── 事件绑定 ────────────────────────────────────────────────
+    $("arcNewBtn").addEventListener("click", () => arcOpenModal(null));
+    $("arcSaveBtn").addEventListener("click", arcSubmitForm);
+    $("arcCancelBtn").addEventListener("click", arcCloseModal);
+    $("arcModalClose").addEventListener("click", arcCloseModal);
+    $("arcDeleteBtn").addEventListener("click", arcDeleteCurrent);
+    $("arcRecSave").addEventListener("click", arcSubmitRecord);
+    $("arcRecCancel").addEventListener("click", () => { $("arcRecModal").classList.remove("open"); arcState.recordFor = null; });
+    $("arcRecClose").addEventListener("click", () => { $("arcRecModal").classList.remove("open"); arcState.recordFor = null; });
+
+    $("arcExportBtn").addEventListener("click", arcExport);
+    $("arcImportBtn").addEventListener("click", () => $("arcImportFile").click());
+    $("arcImportFile").addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (file) await arcImportFile(file);
+      event.target.value = "";
+    });
+
+    $("arcSearch").addEventListener("input", (event) => { arcState.search = event.target.value; arcRenderList(); });
+    $("arcStatusFilter").addEventListener("change", (event) => { arcState.status = event.target.value; arcRenderList(); });
+    $("arcWayFilter").addEventListener("change", (event) => { arcState.way = event.target.value; arcRenderList(); });
+    $("arcSort").addEventListener("change", (event) => { arcState.sort = event.target.value; arcRenderList(); });
+
+    // 点击遮罩关闭
+    [["arcModal", arcCloseModal], ["arcRecModal", () => { $("arcRecModal").classList.remove("open"); arcState.recordFor = null; }]]
+      .forEach(([id, close]) => {
+        $(id).addEventListener("click", (event) => { if (event.target === $(id)) close(); });
+      });
+
+    $("arcList").addEventListener("click", async (event) => {
+      const delRec = event.target.closest("[data-arc-del-rec]");
+      if (delRec) {
+        event.stopPropagation();
+        await arcDeleteRecord(delRec.getAttribute("data-arc-id"), delRec.getAttribute("data-arc-del-rec"));
+        return;
+      }
+      const addRec = event.target.closest("[data-arc-add-rec]");
+      if (addRec) { arcOpenRecordModal(addRec.getAttribute("data-arc-add-rec")); return; }
+
+      const edit = event.target.closest("[data-arc-edit]");
+      if (edit) { arcOpenModal(edit.getAttribute("data-arc-edit")); return; }
+
+      const summary = event.target.closest("[data-arc-summary]");
+      if (summary) { await arcCopySummary(summary.getAttribute("data-arc-summary")); return; }
+
+      const toggle = event.target.closest("[data-arc-toggle]");
+      if (toggle && !event.target.closest("[data-copy],button,a")) {
+        const id = toggle.getAttribute("data-arc-toggle");
+        if (arcState.expanded.has(id)) arcState.expanded.delete(id);
+        else arcState.expanded.add(id);
+        toggle.closest(".arc-card")?.classList.toggle("expanded", arcState.expanded.has(id));
+      }
+    });
+
+    arcLoad().catch(() => showFlash("采购档案加载失败，请刷新重试。"));
 
   </script>
 
