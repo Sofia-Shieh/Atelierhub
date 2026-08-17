@@ -1328,6 +1328,61 @@
     }
     .sku-preset-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
+    /* ── 快速生成 PR ─────────────────────────────────────────────── */
+    .qp-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r10);
+    }
+    .qp-toolbar-right { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .qp-check-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .qp-check-label input { width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary); }
+    .qp-selected-hint { font-size: 12.5px; color: var(--text-3); font-family: var(--mono); }
+    .qp-selected-hint.active { color: var(--primary); font-weight: 600; }
+    .qp-inline-field { display: flex; align-items: center; gap: 6px; }
+    .qp-inline-field label { font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
+    .qp-inline-field input { width: 62px; }
+    .qp-inline-field select { width: 108px; }
+    .qp-row-check { width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary); }
+    .qp-cat {
+      display: inline-block; padding: 1px 7px; border-radius: 4px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .qp-cat.proxy      { color: #0F766E; background: rgba(15,118,110,0.1); }
+    .qp-cat.collective { color: #5B21B6; background: var(--violet-light); }
+    .qp-cat.vcc        { color: #92400E; background: var(--amber-light); }
+
+    .qp-preview-list { display: grid; gap: 8px; max-height: 46vh; overflow-y: auto; margin-bottom: 14px; }
+    .qp-preview-item {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--r8, 8px);
+      background: var(--surface-2);
+      font-size: 12.5px;
+    }
+    .qp-preview-item.done    { background: var(--green-light);  border-color: rgba(16,185,129,0.25); }
+    .qp-preview-item.failed  { background: var(--red-light);    border-color: rgba(239,68,68,0.25); }
+    .qp-preview-item.running { background: var(--amber-light);  border-color: rgba(245,158,11,0.3); }
+    .qp-preview-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; word-break: break-all; }
+    .qp-preview-meta  { color: var(--text-3); line-height: 1.7; white-space: pre-wrap; }
+    .qp-preview-state { font-family: var(--mono); font-size: 11.5px; margin-top: 5px; }
+    .qp-warn { color: #92400E; }
+    .qp-err  { color: var(--red); }
+    .qp-ok   { color: #065F46; }
+
+    .qp-run-status {
+      font-family: var(--mono); font-size: 12.5px;
+      padding: 8px 12px; margin-bottom: 12px;
+      background: var(--surface-3); border-radius: var(--r6); color: var(--text-2);
+    }
+    .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
     .sku-result {
       margin-top: 20px;
       padding: 18px;
@@ -1545,6 +1600,12 @@
       <span class="tab-badge" id="badgeTodo">–</span>
     </button>
 
+    <button class="tab" data-tab="quickpr">
+      <svg class="tab-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 2L4 10h4l-1 6 6-8H9l1-6z"/></svg>
+      快速生成 PR
+      <span class="tab-badge" id="badgeQuickPr">–</span>
+    </button>
+
     <button class="tab" data-tab="details">
       <svg class="tab-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5h12M3 9h12M3 13h7"/></svg>
       发放明细
@@ -1628,6 +1689,75 @@
           <div class="card-body">
             <div class="summary-list" id="snapshotSummary"></div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TAB: 快速生成 PR ── -->
+    <section class="panel" data-panel="quickpr">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>快速生成 PR</h1>
+          <p>勾选待建单的发放行，批量创建采购需求单草稿；标题、事由、收益、预算按规则自动填好</p>
+        </div>
+      </div>
+      <div class="page-body">
+
+        <div class="table-toolbar">
+          <input id="qpSearch" placeholder="搜索申请单号 / 软件名 / 申请人 / 领用人" />
+          <select id="qpCategory">
+            <option value="all">全部类别</option>
+            <option value="proxy">仅代采</option>
+            <option value="collective">仅集采</option>
+            <option value="vcc">仅 VCC</option>
+          </select>
+          <select id="qpStock">
+            <option value="all">全部库存状态</option>
+            <option value="stock">仅缺货</option>
+            <option value="ready">仅有货</option>
+          </select>
+        </div>
+
+        <div class="qp-toolbar">
+          <label class="qp-check-label">
+            <input type="checkbox" id="qpSelectAll" />
+            全选当前筛选结果
+          </label>
+          <span class="qp-selected-hint" id="qpSelectedHint">未选择</span>
+          <div class="qp-toolbar-right">
+            <div class="qp-inline-field">
+              <label for="qpMonths">订阅月数</label>
+              <input type="number" id="qpMonths" value="1" min="1" max="36" />
+            </div>
+            <div class="qp-inline-field">
+              <label for="qpPurchaseType">采购性质</label>
+              <select id="qpPurchaseType">
+                <option value="account_add">账号新增</option>
+                <option value="account_renewal">账号续费</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" id="qpGenerate">⚡ 生成需求单</button>
+          </div>
+        </div>
+
+        <div class="notice" id="qpNotice" style="display:none;"></div>
+
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px"></th>
+                <th>申请单 / 发放单</th>
+                <th>软件</th>
+                <th>申请人 / 领用人</th>
+                <th>类别 / 预算</th>
+                <th>库存</th>
+                <th>等待</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="qpTable"></tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -1854,6 +1984,31 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
   </div>
 </div>
 
+<!-- ── 批量建单弹窗 ── -->
+<div class="modal" id="quickPrModal">
+  <div class="modal-card" style="width:min(720px,calc(100vw - 32px));">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">批量生成采购需求单</h2>
+        <p class="modal-copy" id="qpModalDesc">确认下列内容后开始建单。每条依次创建草稿，失败的行不影响其余行。</p>
+      </div>
+      <button type="button" class="btn btn-ghost" id="qpCloseModal" style="flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M12.7 4.7l-1.4-1.4L8 6.6 4.7 3.3 3.3 4.7 6.6 8l-3.3 3.3 1.4 1.4L8 9.4l3.3 3.3 1.4-1.4L9.4 8z"/></svg>
+        关闭
+      </button>
+    </div>
+
+    <div class="qp-preview-list" id="qpPreviewList"></div>
+
+    <div id="qpRunStatus" class="qp-run-status" style="display:none;"></div>
+
+    <div class="modal-actions">
+      <button type="button" id="qpRunBtn" class="btn btn-primary">🚀 确认建单</button>
+      <button type="button" id="qpOpenAllBtn" class="btn btn-secondary" style="display:none;">↗ 打开全部 PR 编辑页</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Toast ── -->
 <div class="flash" id="flash"></div>
 
@@ -1942,6 +2097,10 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       detailSearch: "",
       detailStockFilter: "all",
       detailPrFilter: "all",
+      qpSearch: "",
+      qpCategory: "all",
+      qpStock: "all",
+      qpSelected: new Set(),
       flashTimer: null,
     };
 
@@ -2376,6 +2535,9 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       const prBtn = row.prUrl
         ? `<a class="inline-link" href="${escapeHtml(row.prUrl)}" target="_blank" rel="noreferrer">🔗 打开 PR · ${escapeHtml(row.prCode)}</a>`
         : `<button type="button" class="secondary" data-create-pr="${escapeHtml(row.docCode)}">📋 提需求单 PR</button>`;
+      const quickPrBtn = row.prCode
+        ? ""
+        : `<button type="button" class="secondary" data-quick-pr="${escapeHtml(row.docCode)}">⚡ 快速建单</button>`;
       const markBtn = (row.stockFlag && !row.prCode)
         ? `<button type="button" class="secondary" data-mark-pr="${escapeHtml(row.sourceDocCode)}">📦 标记缺货</button>`
         : "";
@@ -2431,6 +2593,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
               <button type="button" class="secondary" data-copy="${escapeHtml(row.docCode)}">复制发放单号</button>
               ${markBtn}
               ${deliverBtn}
+              ${quickPrBtn}
               ${prBtn}
             </div>
           </div>
@@ -2517,7 +2680,8 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         })();
         const deliverBtn = row.prCode
           ? `<button type="button" data-deliver-pr="${escapeHtml(row.prCode)}" data-deliver-req="${escapeHtml(row.sourceDocCode)}" style="background:var(--green);color:#fff;border:none;padding:4px 10px;border-radius:var(--r6);font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🚀 发放</button>`
-          : `<button type="button" class="secondary" data-create-pr="${escapeHtml(row.docCode)}" style="font-size:12px;padding:4px 10px;white-space:nowrap;">📋 提 PR</button>`;
+          : `<button type="button" class="secondary" data-quick-pr="${escapeHtml(row.docCode)}" style="font-size:12px;padding:4px 10px;white-space:nowrap;">⚡ 建单</button>
+             <button type="button" class="secondary" data-create-pr="${escapeHtml(row.docCode)}" style="font-size:12px;padding:4px 10px;white-space:nowrap;margin-top:4px;">📋 提 PR</button>`;
         return `
         <tr style="${isOverdue ? "background:rgba(220,50,50,.04);" : ""}">
           <td>
@@ -2615,6 +2779,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       renderTodoList();
       renderSnapshotSummary();
       renderDetailsTable();
+      renderQuickPrTable();
       renderSoftwareSummary();
       renderGuideGrid();
     }
@@ -2916,6 +3081,8 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
           showFlash(error.message || "导入失败，请检查 JSON。");
         }
       });
+
+      bindQuickPrEvents();
 
       $("detailSearch").addEventListener("input", (e) => { state.detailSearch = e.target.value; renderDetailsTable(); });
       $("detailStockFilter").addEventListener("change", (e) => { state.detailStockFilter = e.target.value; renderDetailsTable(); });
@@ -3236,17 +3403,58 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       return row.claimUserDepartmentFull || row.requesterDepartmentFull || "";
     }
 
-    async function ptpFetch(path, body) {
-      const resp = await fetch(PTP_BASE + "/neone-ptp-svc" + path, {
+    // fetch 没有 timeout 选项，统一用 AbortController 兜住卡死的请求
+    const REQUEST_TIMEOUT_MS = 20000;
+
+    function shortPath(url) {
+      return String(url).replace(PTP_BASE, "");
+    }
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } catch (error) {
+        if (error.name === "AbortError") {
+          throw new Error(`请求超时（${Math.round(timeoutMs / 1000)}s）：${shortPath(url)}`);
+        }
+        throw new Error(`连接失败：${shortPath(url)}（确认后端已在 ${PTP_BASE} 运行）`);
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+
+    /** POST JSON，只校验 HTTP 层，业务码由调用方判断 */
+    async function postJson(url, body, timeoutMs) {
+      const resp = await fetchWithTimeout(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      });
-      const data = await resp.json();
+      }, timeoutMs);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} · ${shortPath(url)}`);
+      return resp.json();
+    }
+
+    async function ptpFetch(path, body) {
+      const data = await postJson(PTP_BASE + "/neone-ptp-svc" + path, body);
       if (data.retcode !== 0 && data.code !== 0) {
         throw new Error(data.message || data.msg || `接口错误 ${data.retcode || data.code}`);
       }
       return data;
+    }
+
+    /** 拉申请单详情里的「申请事由」，失败返回空串（不阻塞建单） */
+    async function fetchClaimNote(sourceDocCode) {
+      if (!sourceDocCode) return "";
+      try {
+        const detailData = await postJson(
+          PTP_BASE + "/neone-sam-svc/out/v1/claim/info/detail",
+          { doc_code: sourceDocCode },
+        );
+        if (detailData.code === 0 && detailData.data?.head?.note) return detailData.data.head.note;
+      } catch (error) { /* 事由拿不到就留空 */ }
+      return "";
     }
 
     async function openPrModal(docCode) {
@@ -3267,18 +3475,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       $("prModal").classList.add("open");
 
       // 异步拉申请单详情，获取申请事由 note
-      let note = "";
-      try {
-        const detailResp = await fetch(PTP_BASE + "/neone-sam-svc/out/v1/claim/info/detail", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ doc_code: row.sourceDocCode }),
-        });
-        const detailData = await detailResp.json();
-        if (detailData.code === 0 && detailData.data?.head?.note) {
-          note = detailData.data.head.note;
-        }
-      } catch (e) { /* ignore */ }
+      const note = await fetchClaimNote(row.sourceDocCode);
 
       prCurrentRow._note = note; // 存到行对象上供 submitPr 使用
 
@@ -3299,188 +3496,216 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       $("prStatus").style.display = "none";
     }
 
+    /**
+     * PR 建单核心流程，与 UI 解耦，单条弹窗和批量建单共用。
+     * 关键步骤失败即 throw；SKU / 受益部门匹配不到只记 warning，不阻断建单。
+     * @returns {{prCode:string, editUrl:string, skuCode:string, expenseDeptCode:string,
+     *            deptDisplay:string, warnings:string[], budget:object, nonProxy:boolean, title:string}}
+     */
+    async function createPrForRow(row, opts = {}) {
+      const months          = parseInt(opts.months, 10) || 1;
+      const purchaseTypeVal = opts.purchaseType || PURCHASE_TYPE.add;
+      const note            = opts.note || "";
+      const onStatus        = typeof opts.onStatus === "function" ? opts.onStatus : () => {};
+
+      const nonProxy    = isNonProxy(row);
+      const budget      = nonProxy ? BUDGET_NON_PROXY : BUDGET_PROXY;
+      const deptDisplay = (opts.deptDisplay || "").trim() || getDeptDisplay(row);
+      const title       = buildPrTitle(row);
+      const reason      = buildPrReason(row, note);
+      const benefit     = buildPrBenefit(row, note);
+      const warnings    = [];
+
+      // Step 1: 查 SAM 台账，取 sku_code 和 purchase_type_path_code
+      onStatus("Step 1/4  查询软件 SKU 信息…");
+      let skuCode = "";
+      let purchaseTypePathCode = "";
+      try {
+        // 先精确查全名，再截取前10字符模糊查兜底
+        const trySearch = async (keyword) => {
+          const d = await postJson(PTP_BASE + "/neone-sam-svc/v1/ledger/page", {
+            page: 1, page_size: 5, sku_name: keyword,
+          });
+          return (d.code === 0 && d.data && d.data.list) ? d.data.list : [];
+        };
+        let list = await trySearch(row.skuName);
+        // 若精确名未命中，截取前10个字符模糊搜
+        if (list.length === 0) list = await trySearch(row.skuName.slice(0, 10));
+        if (list.length > 0) {
+          const exact = list.find(s => s.sku_name === row.skuName && s.sw_version === row.version)
+            || list.find(s => s.sku_name === row.skuName)
+            || list[0];
+          skuCode = exact.sku_code || "";
+          purchaseTypePathCode = exact.purchase_type_path_code || "";
+        }
+      } catch (error) { /* 查不到就留空 */ }
+      if (!skuCode) warnings.push("SKU 未匹配，需在采购系统手动选择采购类别及单品");
+
+      // Step 2: 查预算匹配受益部门 code
+      onStatus("Step 2/4  匹配受益部门…");
+      let expenseDeptCode = "";
+      try {
+        const budgetData = await postJson(PTP_BASE + "/neone-ptp-svc/budget/selection/list", {
+          items: [{ budget_no: budget.no, space_id: BUDGET_COMMON.space_id }],
+        });
+        const deptList = (budgetData.data && budgetData.data.budget_selection_list && budgetData.data.budget_selection_list[0] && budgetData.data.budget_selection_list[0].expense_department_list) || [];
+        if (deptList.length > 0) {
+          const normalize = s => s.replace(/\s/g, "").toLowerCase();
+          const parts = deptDisplay.split(">");
+          let best = null, bestScore = -1;
+          for (const dept of deptList) {
+            const name = normalize(dept.value);
+            let score = 0;
+            for (const part of parts) { if (name.includes(normalize(part))) score++; }
+            if (score > bestScore) { bestScore = score; best = dept; }
+          }
+          if (best) expenseDeptCode = best.key;
+        }
+      } catch (error) { /* 匹配失败留空 */ }
+      if (!expenseDeptCode) warnings.push("受益部门未匹配，需在采购系统手动选择");
+
+      // Step 3: 创建空草稿头
+      onStatus("Step 3/4  创建 PR 草稿…");
+      const addData = await ptpFetch("/demand/add", {
+        demand_head: {
+          title, state: 1, demand_type: 1,
+          applicant: "yuqing.xie02",
+          department_code: "0780>2136>1396",
+          currency: "CNY",
+          apply_reason: reason,
+          expected_effect: benefit,
+          attachment_list: [],
+          source: "PTP", apply_type: "common",
+          merch_execute_method: "",
+          recipient_is_obtain_packing_list: 0,
+        },
+        rows: [],
+      });
+      const prCode = addData.data && addData.data.code;
+      if (!prCode) throw new Error("创建草稿失败：未获取到 PR 单号");
+
+      // Step 4: demand/update 写入明细行（不带 code/row_code，version=1）
+      onStatus("Step 4/4  写入需求明细…");
+      const useDate = new Date();
+      useDate.setDate(useDate.getDate() + 1);
+      const useDateStr = useDate.toISOString().slice(0, 10);
+
+      const buildRow = (purchaseType, period) => ({
+        demand_code: prCode, type: 1,
+        purchase_type_path_code: purchaseTypePathCode,
+        business_type_path_code: BUDGET_COMMON.business_type_path_code,
+        quantity: "1", quantity_unit_code: "U001",
+        use_date: useDateStr, use_date_timezone_type: 8,
+        benefit_center_code: "", is_pay_advance: 2,
+        attachment_list: [], description: "",
+        unit_price: row.unitPrice || row.sw_unit_price || "",
+        currency: row.currency || row.sw_currency || "USD",
+        counterpart_list: [], state: 1, company_code: "20", flow_type: 0,
+        sku_code: skuCode, title: "",
+        budget_space_id: BUDGET_COMMON.space_id,
+        budget_no: budget.no,
+        channel_type_path_code: "", version_code: BUDGET_COMMON.version_code,
+        financial_tag: "BQ00001016", active_name: "",
+        receipt_address_type: 1, receipt_address: "",
+        receipt_warehouse_code: "", software_purchase_type: purchaseType,
+        subscribe_period: period, merch_usage_code: "",
+        outbound_warehouse_code: "", merch_collector_list: [],
+        activity_code: "",
+        expense_department_path_code: expenseDeptCode,
+        ip_code: "", budget_area_code: "", collection_pr_row_code: "",
+      });
+
+      const updatedRows = [buildRow(purchaseTypeVal, months > 1 ? 1 : months)];
+      if (months > 1 && purchaseTypeVal === PURCHASE_TYPE.add) {
+        updatedRows.push(buildRow(PURCHASE_TYPE.renewal, months - 1));
+      }
+
+      const updateData = await postJson(PTP_BASE + "/neone-ptp-svc/demand/update", {
+        demand_head: {
+          title, state: 1, demand_type: 1,
+          applicant: "yuqing.xie02",
+          department_code: "0780>2136>1396",
+          currency: "CNY",
+          apply_reason: reason,
+          expected_effect: benefit,
+          associated_demand_code_list: [],
+          attachment_list: [],
+          code: prCode,
+          inform_users: [],
+          owner: "yuqing.xie02",
+          execution_cycle_start: "", execution_cycle_end: "",
+          source: "PTP", apply_type: "common",
+          merch_execute_method: "",
+          recipient_is_obtain_packing_list: 0,
+          srm_ppr_code: "",
+        },
+        rows: updatedRows,
+        code: prCode,
+        version: addData.data.version || 1,
+      });
+      if (updateData.retcode !== 0) {
+        throw new Error("明细写入失败：" + (updateData.message || updateData.retcode));
+      }
+
+      return {
+        prCode,
+        editUrl: `https://neone.mihoyo.com/procurement/demand-edit/edit/${prCode}?hide_company_name=y&hide_expense_attribute_name=y`,
+        skuCode, expenseDeptCode, deptDisplay, warnings, budget, nonProxy, title,
+      };
+    }
+
+    /** 把建单结果写回快照并持久化到后端，让看板即时反映 PR 状态 */
+    async function persistPrCode(row, prCode) {
+      row.prCode = prCode;
+      row.prUrl  = `https://neone.mihoyo.com/procurement/demand-edit/view/${prCode}`;
+      try {
+        await postJson(PROXY_BASE + "/api/mark_pr", { req_code: row.sourceDocCode, pr_code: prCode });
+      } catch (error) { /* 后端未启动时仅内存生效，不影响建单结果 */ }
+    }
+
     async function submitPr(asDraft) {
       if (!prCurrentRow) return;
       const row = prCurrentRow;
-      const months = parseInt($("prMonths").value, 10) || 1;
-      const purchaseTypeVal = $("prPurchaseType").value;
 
       $("prSubmitBtn").disabled = true;
       $("prDraftBtn").disabled = true;
 
       try {
-        const note = row._note || "";
-        const title = buildPrTitle(row);
-        const reason = buildPrReason(row, note);
-        const benefit = buildPrBenefit(row, note);
-        const nonProxy = isNonProxy(row);
-        const budget = nonProxy ? BUDGET_NON_PROXY : BUDGET_PROXY;
-        const deptDisplay = $("prBenefitDept").value.trim() || getDeptDisplay(row);
-
-        // Step 1: 查 SAM 台账，取 sku_code 和 purchase_type_path_code
-        setPrStatus("Step 1/3  查询软件 SKU 信息…");
-        let skuCode = "";
-        let purchaseTypePathCode = "";
-        try {
-          // 先精确查全名，再截取前10字符模糊查兜底
-          const trySearch = async (keyword) => {
-            const r = await fetch(PTP_BASE + "/neone-sam-svc/v1/ledger/page", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ page: 1, page_size: 5, sku_name: keyword }),
-            });
-            const d = await r.json();
-            return (d.code === 0 && d.data && d.data.list) ? d.data.list : [];
-          };
-          let list = await trySearch(row.skuName);
-          // 若精确名未命中，截取前10个字符模糊搜
-          if (list.length === 0) list = await trySearch(row.skuName.slice(0, 10));
-          if (list.length > 0) {
-            const exact = list.find(s => s.sku_name === row.skuName && s.sw_version === row.version)
-              || list.find(s => s.sku_name === row.skuName)
-              || list[0];
-            skuCode = exact.sku_code || "";
-            purchaseTypePathCode = exact.purchase_type_path_code || "";
-          }
-        } catch (e) { /* 查不到就留空 */ }
-
-        // Step 2: 查预算匹配受益部门 code
-        setPrStatus("Step 2/3  匹配受益部门…");
-        let expenseDeptCode = "";
-        try {
-          const budgetResp = await fetch(PTP_BASE + "/neone-ptp-svc/budget/selection/list", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ items: [{ budget_no: budget.no, space_id: BUDGET_COMMON.space_id }] }),
-          });
-          const budgetData = await budgetResp.json();
-          const deptList = (budgetData.data && budgetData.data.budget_selection_list && budgetData.data.budget_selection_list[0] && budgetData.data.budget_selection_list[0].expense_department_list) || [];
-          if (deptList.length > 0) {
-            const normalize = s => s.replace(/\s/g, "").toLowerCase();
-            const parts = deptDisplay.split(">");
-            let best = null, bestScore = -1;
-            for (const dept of deptList) {
-              const name = normalize(dept.value);
-              let score = 0;
-              for (const part of parts) { if (name.includes(normalize(part))) score++; }
-              if (score > bestScore) { bestScore = score; best = dept; }
-            }
-            if (best) expenseDeptCode = best.key;
-          }
-        } catch (e) { /* 匹配失败留空 */ }
-
-        // Step 3: 创建空草稿头
-        setPrStatus("Step 3/3  创建 PR 草稿…");
-        const addData = await ptpFetch("/demand/add", {
-          demand_head: {
-            title, state: 1, demand_type: 1,
-            applicant: "yuqing.xie02",
-            department_code: "0780>2136>1396",
-            currency: "CNY",
-            apply_reason: reason,
-            expected_effect: benefit,
-            attachment_list: [],
-            source: "PTP", apply_type: "common",
-            merch_execute_method: "",
-            recipient_is_obtain_packing_list: 0,
-          },
-          rows: [],
-        });
-        const prCode = addData.data && addData.data.code;
-        if (!prCode) throw new Error("创建草稿失败：未获取到 PR 单号");
-
-        // Step 4: demand/update 写入明细行（不带 code/row_code，version=1）
-        setPrStatus("Step 3/3  写入需求明细…");
-        const useDate = new Date();
-        useDate.setDate(useDate.getDate() + 1);
-        const useDateStr = useDate.toISOString().slice(0, 10);
-
-        const buildRow = (purchaseType, period) => ({
-          demand_code: prCode, type: 1,
-          purchase_type_path_code: purchaseTypePathCode,
-          business_type_path_code: BUDGET_COMMON.business_type_path_code,
-          quantity: "1", quantity_unit_code: "U001",
-          use_date: useDateStr, use_date_timezone_type: 8,
-          benefit_center_code: "", is_pay_advance: 2,
-          attachment_list: [], description: "",
-          unit_price: row.unitPrice || row.sw_unit_price || "",
-          currency: row.currency || row.sw_currency || "USD",
-          counterpart_list: [], state: 1, company_code: "20", flow_type: 0,
-          sku_code: skuCode, title: "",
-          budget_space_id: BUDGET_COMMON.space_id,
-          budget_no: budget.no,
-          channel_type_path_code: "", version_code: BUDGET_COMMON.version_code,
-          financial_tag: "BQ00001016", active_name: "",
-          receipt_address_type: 1, receipt_address: "",
-          receipt_warehouse_code: "", software_purchase_type: purchaseType,
-          subscribe_period: period, merch_usage_code: "",
-          outbound_warehouse_code: "", merch_collector_list: [],
-          activity_code: "",
-          expense_department_path_code: expenseDeptCode,
-          ip_code: "", budget_area_code: "", collection_pr_row_code: "",
+        const result = await createPrForRow(row, {
+          months:       $("prMonths").value,
+          purchaseType: $("prPurchaseType").value,
+          deptDisplay:  $("prBenefitDept").value,
+          note:         row._note || "",
+          onStatus:     (msg) => setPrStatus(msg),
         });
 
-        const updatedRows = [buildRow(purchaseTypeVal, months > 1 ? 1 : months)];
-        if (months > 1 && purchaseTypeVal === "account_add") {
-          updatedRows.push(buildRow("account_renewal", months - 1));
-        }
+        setPrStatus(`✅ 已创建并填写明细 → ${result.prCode}`, false);
+        showFlash(`已创建：${result.prCode}`);
+        window.open(result.editUrl, "_blank");
 
-        const updateResp = await fetch(PTP_BASE + "/neone-ptp-svc/demand/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            demand_head: {
-              title, state: 1, demand_type: 1,
-              applicant: "yuqing.xie02",
-              department_code: "0780>2136>1396",
-              currency: "CNY",
-              apply_reason: reason,
-              expected_effect: benefit,
-              associated_demand_code_list: [],
-              attachment_list: [],
-              code: prCode,
-              inform_users: [],
-              owner: "yuqing.xie02",
-              execution_cycle_start: "", execution_cycle_end: "",
-              source: "PTP", apply_type: "common",
-              merch_execute_method: "",
-              recipient_is_obtain_packing_list: 0,
-              srm_ppr_code: "",
-            },
-            rows: updatedRows,
-            code: prCode,
-            version: addData.data.version || 1,
-          }),
-        });
-        const updateData = await updateResp.json();
-        if (updateData.retcode !== 0) {
-          throw new Error("明细写入失败：" + (updateData.message || updateData.retcode));
-        }
-
-        // 完成
-        const editUrl = `https://neone.mihoyo.com/procurement/demand-edit/edit/${prCode}?hide_company_name=y&hide_expense_attribute_name=y`;
-        const skuLine = skuCode ? `SKU: ${skuCode}` : "⚠️ SKU未匹配，请手动选择采购类别及单品";
-        const deptLine = expenseDeptCode ? `受益部门已匹配：${deptDisplay}` : "⚠️ 受益部门未匹配，请手动选择";
-
-        setPrStatus(`✅ 已创建并填写明细 → ${prCode}`, false);
-        showFlash(`已创建：${prCode}`);
-        window.open(editUrl, "_blank");
+        const skuLine  = result.skuCode ? `SKU: ${result.skuCode}` : "⚠️ SKU未匹配，请手动选择采购类别及单品";
+        const deptLine = result.expenseDeptCode ? `受益部门已匹配：${result.deptDisplay}` : "⚠️ 受益部门未匹配，请手动选择";
 
         $("prFormPreview").innerHTML += `
           <div class="fact" style="background:rgba(45,124,89,0.08);border-color:rgba(45,124,89,0.2)">
-            <div class="fact-label">✅ 草稿已创建：${escapeHtml(prCode)}</div>
+            <div class="fact-label">✅ 草稿已创建：${escapeHtml(result.prCode)}</div>
             <div class="fact-value" style="font-size:12px;line-height:1.8">${escapeHtml(skuLine)}<br>${escapeHtml(deptLine)}<br>请在采购系统核查明细后点击「提交」。</div>
           </div>
         `;
+
+        await persistPrCode(row, result.prCode);
+        renderTodoList();
+        renderDetailsTable();
+        renderQuickPrTable();
 
         const cardBtn = document.querySelector(`[data-create-pr="${CSS.escape(row.docCode)}"]`);
         if (cardBtn) {
           const link = document.createElement("a");
           link.className = "inline-link";
-          link.href = editUrl;
+          link.href = result.editUrl;
           link.target = "_blank";
           link.rel = "noreferrer";
-          link.textContent = `编辑 PR · ${prCode}`;
+          link.textContent = `编辑 PR · ${result.prCode}`;
           cardBtn.replaceWith(link);
         }
 
@@ -3503,6 +3728,291 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
     setupCrossWindowSync();
     loadSnapshotSafe().catch(() => showFlash("加载快照失败，请刷新重试。"));
     window.setTimeout(notifyOpenerReady, 0);
+
+    // ══════════════════════════════════════════════════════════════
+    // 快速生成 PR（批量建单）
+    // ══════════════════════════════════════════════════════════════
+    const CATEGORY_LABEL = { proxy: "代采", collective: "集采", vcc: "VCC" };
+
+    let qpQueue   = []; // 本次建单的行
+    let qpResults = []; // 建单结果，按 docCode 对齐 qpQueue
+
+    /** 有限并发遍历，避免一次性打满后端 */
+    async function forEachLimited(items, limit, fn) {
+      const queue = items.slice();
+      const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+        while (queue.length) await fn(queue.shift());
+      });
+      await Promise.all(workers);
+    }
+
+    /** 待建单候选：还没有 PR 单号的发放行，按申请时间从早到晚（越早越急） */
+    function quickPrCandidates() {
+      const search = normalizeText(state.qpSearch);
+      return (state.snapshot?.rows || [])
+        .filter((row) => !row.prCode)
+        .filter((row) => {
+          const searchHit = !search || [
+            row.sourceDocCode, row.docCode, row.skuName, row.requesterName, row.claimUserName,
+          ].some((item) => normalizeText(item).includes(search));
+          const catHit = state.qpCategory === "all" || classifyRow(row) === state.qpCategory;
+          const stockHit = state.qpStock === "all"
+            || (state.qpStock === "stock" && row.stockFlag)
+            || (state.qpStock === "ready" && !row.stockFlag);
+          return searchHit && catHit && stockHit;
+        })
+        .sort((a, b) => (a.sourceCreateTime || "").localeCompare(b.sourceCreateTime || ""));
+    }
+
+    function renderQuickPrTable() {
+      const tbody = $("qpTable");
+      if (!tbody) return;
+      const rows = quickPrCandidates();
+
+      // 已经建过单的行从勾选集里剔除，避免重复建单
+      const stillOpen = new Set((state.snapshot?.rows || []).filter((r) => !r.prCode).map((r) => r.docCode));
+      Array.from(state.qpSelected).forEach((code) => {
+        if (!stillOpen.has(code)) state.qpSelected.delete(code);
+      });
+
+      tbody.innerHTML = rows.length ? rows.map((row) => {
+        const cat      = classifyRow(row);
+        const nonProxy = isNonProxy(row);
+        const budget   = nonProxy ? BUDGET_NON_PROXY : BUDGET_PROXY;
+        const age      = daysSince(row.sourceCreateTime);
+        const isOverdue = (() => {
+          const str = (row.sourceCreateTime || "").trim().replace(" ", "T");
+          const t = new Date(/[Zz+\-]\d{2}:?\d{2}$/.test(str) ? str : str + "+08:00");
+          return !isNaN(t) && (Date.now() - t.getTime()) >= 72 * 3600000;
+        })();
+        const checked = state.qpSelected.has(row.docCode) ? " checked" : "";
+        return `
+        <tr style="${isOverdue ? "background:rgba(220,50,50,.04);" : ""}">
+          <td><input type="checkbox" class="qp-row-check" data-qp-pick="${escapeHtml(row.docCode)}"${checked} /></td>
+          <td>
+            <div><strong style="font-family:var(--mono);font-size:12px;">${escapeHtml(row.sourceDocCode)}</strong></div>
+            <div class="small" style="margin-top:3px;font-family:var(--mono);">${escapeHtml(row.docCode)}</div>
+          </td>
+          <td>
+            <div><strong style="color:var(--green)">${escapeHtml(row.skuName)}</strong></div>
+            <div class="small">${escapeHtml(row.version || "")}${row.vendor ? " · " + escapeHtml(row.vendor) : ""}</div>
+          </td>
+          <td>
+            <div><strong>${escapeHtml(row.claimUserName || row.requesterName)}</strong></div>
+            <div class="small">${escapeHtml(row.requesterDepartment || row.requesterDepartmentFull || "")}</div>
+          </td>
+          <td>
+            <div><span class="qp-cat ${cat}">${escapeHtml(CATEGORY_LABEL[cat] || cat)}</span></div>
+            <div class="small" style="margin-top:4px;font-family:var(--mono);font-size:11px;">${escapeHtml(budget.desc)}</div>
+          </td>
+          <td>${row.stockFlag ? `<span class="badge stock">缺货 ${row.outOfStockNum || 1}</span>` : `<span class="badge ready">无缺货</span>`}</td>
+          <td style="white-space:nowrap;${isOverdue ? "color:var(--red);font-weight:600;" : ""}">${age != null ? age : "--"}</td>
+          <td><button type="button" class="secondary" data-quick-pr="${escapeHtml(row.docCode)}" style="font-size:12px;padding:4px 10px;white-space:nowrap;">⚡ 建单</button></td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="8"><div class="empty">没有待建单的发放行。</div></td></tr>`;
+
+      updateQuickPrSelection();
+    }
+
+    function updateQuickPrSelection() {
+      const rows = quickPrCandidates();
+      const visibleSelected = rows.filter((r) => state.qpSelected.has(r.docCode)).length;
+      const total = state.qpSelected.size;
+
+      const hint = $("qpSelectedHint");
+      if (hint) {
+        hint.textContent = total
+          ? `已选 ${total} 条${visibleSelected !== total ? `（当前筛选内 ${visibleSelected} 条）` : ""}`
+          : "未选择";
+        hint.classList.toggle("active", total > 0);
+      }
+
+      const selectAll = $("qpSelectAll");
+      if (selectAll) {
+        selectAll.checked = rows.length > 0 && visibleSelected === rows.length;
+        selectAll.indeterminate = visibleSelected > 0 && visibleSelected < rows.length;
+      }
+
+      const generate = $("qpGenerate");
+      if (generate) generate.disabled = total === 0;
+
+      const badge = $("badgeQuickPr");
+      if (badge) {
+        const pending = (state.snapshot?.rows || []).filter((r) => !r.prCode).length;
+        badge.textContent = pending || "–";
+      }
+    }
+
+    function qpResultFor(docCode) {
+      return qpResults.find((r) => r.docCode === docCode) || null;
+    }
+
+    function renderQpPreview() {
+      const list = $("qpPreviewList");
+      if (!list) return;
+      list.innerHTML = qpQueue.map((row) => {
+        const nonProxy = isNonProxy(row);
+        const budget   = nonProxy ? BUDGET_NON_PROXY : BUDGET_PROXY;
+        const note     = row._note || "";
+        const res      = qpResultFor(row.docCode);
+
+        let cls = "", stateLine = "";
+        if (res?.status === "running") {
+          cls = " running";
+          stateLine = `<div class="qp-preview-state">⏳ ${escapeHtml(res.message || "建单中…")}</div>`;
+        } else if (res?.status === "ok") {
+          cls = " done";
+          const warn = (res.warnings || []).length
+            ? `<br><span class="qp-warn">⚠️ ${escapeHtml(res.warnings.join("；"))}</span>` : "";
+          stateLine = `<div class="qp-preview-state qp-ok">✅ ${escapeHtml(res.prCode)} · <a class="inline-link" href="${escapeHtml(res.editUrl)}" target="_blank" rel="noreferrer">打开编辑页</a>${warn}</div>`;
+        } else if (res?.status === "failed") {
+          cls = " failed";
+          stateLine = `<div class="qp-preview-state qp-err">❌ ${escapeHtml(res.message || "建单失败")}</div>`;
+        }
+
+        return `
+          <div class="qp-preview-item${cls}">
+            <div class="qp-preview-title">${escapeHtml(buildPrTitle(row))}</div>
+            <div class="qp-preview-meta">${escapeHtml(buildPrReason(row, note))}
+预计效果：${escapeHtml(buildPrBenefit(row, note))}
+预算：${escapeHtml(budget.no)} · ${nonProxy ? "非代采" : "代采"} Q2 · 受益部门：${escapeHtml(getDeptDisplay(row) || "未识别")}</div>
+            ${stateLine}
+          </div>`;
+      }).join("");
+    }
+
+    async function openQuickPrModal(docCodes) {
+      const wanted = new Set(docCodes);
+      const rows = (state.snapshot?.rows || []).filter((r) => wanted.has(r.docCode) && !r.prCode);
+      if (!rows.length) { showFlash("没有可建单的行（可能都已有 PR）。"); return; }
+
+      qpQueue   = rows;
+      qpResults = [];
+
+      const months       = parseInt($("qpMonths").value, 10) || 1;
+      const purchaseType = $("qpPurchaseType").value;
+      $("qpModalDesc").textContent =
+        `共 ${rows.length} 条 · 订阅 ${months} 个月 · ${purchaseType === PURCHASE_TYPE.add ? "账号新增" : "账号续费"}；每条依次创建草稿，失败的行不影响其余行。`;
+
+      $("qpRunBtn").style.display = "";
+      $("qpRunBtn").disabled = false;
+      $("qpOpenAllBtn").style.display = "none";
+      $("qpRunStatus").style.display = "none";
+      $("quickPrModal").classList.add("open");
+
+      // 先用现有字段渲染预览，再补申请事由（事由影响 apply_reason / expected_effect 文案）
+      renderQpPreview();
+      const needNote = rows.filter((row) => !row._note);
+      if (needNote.length) {
+        $("qpRunStatus").style.display = "block";
+        $("qpRunStatus").textContent = `正在获取 ${needNote.length} 条申请事由…`;
+        await forEachLimited(needNote, 4, async (row) => {
+          row._note = await fetchClaimNote(row.sourceDocCode);
+        });
+        $("qpRunStatus").style.display = "none";
+        renderQpPreview();
+      }
+    }
+
+    async function runQuickPrBatch() {
+      const months       = parseInt($("qpMonths").value, 10) || 1;
+      const purchaseType = $("qpPurchaseType").value;
+
+      $("qpRunBtn").disabled = true;
+      $("qpRunStatus").style.display = "block";
+
+      const setState = (row, patch) => {
+        const idx  = qpResults.findIndex((r) => r.docCode === row.docCode);
+        const next = { ...(idx >= 0 ? qpResults[idx] : { docCode: row.docCode }), ...patch };
+        if (idx >= 0) qpResults[idx] = next; else qpResults.push(next);
+        renderQpPreview();
+      };
+
+      let ok = 0, failed = 0;
+      // 串行执行：建单会写采购系统，逐条推进便于定位失败行
+      for (let i = 0; i < qpQueue.length; i++) {
+        const row = qpQueue[i];
+        $("qpRunStatus").textContent = `正在处理 ${i + 1}/${qpQueue.length}：${row.sourceDocCode} · ${row.skuName}`;
+        setState(row, { status: "running", message: "" });
+        try {
+          const result = await createPrForRow(row, {
+            months, purchaseType,
+            note: row._note || "",
+            onStatus: (msg) => setState(row, { status: "running", message: msg }),
+          });
+          setState(row, {
+            status: "ok", prCode: result.prCode, editUrl: result.editUrl, warnings: result.warnings,
+          });
+          await persistPrCode(row, result.prCode);
+          state.qpSelected.delete(row.docCode);
+          ok += 1;
+        } catch (error) {
+          setState(row, { status: "failed", message: error.message || "建单失败" });
+          failed += 1;
+        }
+      }
+
+      $("qpRunStatus").textContent = failed
+        ? `完成：成功 ${ok} 条，失败 ${failed} 条（失败行仍保留勾选，修正后可重试）`
+        : `完成：成功 ${ok} 条`;
+      $("qpRunBtn").style.display = "none";
+      if (ok > 0) $("qpOpenAllBtn").style.display = "";
+      showFlash(`批量建单完成：成功 ${ok}${failed ? ` / 失败 ${failed}` : ""}`);
+
+      renderMetrics();
+      renderTodoList();
+      renderDetailsTable();
+      renderQuickPrTable();
+    }
+
+    function bindQuickPrEvents() {
+      $("qpSearch").addEventListener("input", (e) => {
+        state.qpSearch = e.target.value; renderQuickPrTable();
+      });
+      $("qpCategory").addEventListener("change", (e) => {
+        state.qpCategory = e.target.value; renderQuickPrTable();
+      });
+      $("qpStock").addEventListener("change", (e) => {
+        state.qpStock = e.target.value; renderQuickPrTable();
+      });
+
+      $("qpSelectAll").addEventListener("change", (e) => {
+        const rows = quickPrCandidates();
+        if (e.target.checked) rows.forEach((r) => state.qpSelected.add(r.docCode));
+        else rows.forEach((r) => state.qpSelected.delete(r.docCode));
+        renderQuickPrTable();
+      });
+
+      // 行内勾选（change 不冒泡到 body 的 click 委托，单独挂在表格上）
+      $("qpTable").addEventListener("change", (e) => {
+        const box = e.target.closest("[data-qp-pick]");
+        if (!box) return;
+        const code = box.getAttribute("data-qp-pick");
+        if (box.checked) state.qpSelected.add(code); else state.qpSelected.delete(code);
+        updateQuickPrSelection();
+      });
+
+      $("qpGenerate").addEventListener("click", () => {
+        const rows = quickPrCandidates().filter((r) => state.qpSelected.has(r.docCode));
+        const picked = rows.length ? rows : (state.snapshot?.rows || []).filter((r) => state.qpSelected.has(r.docCode));
+        openQuickPrModal(picked.map((r) => r.docCode));
+      });
+
+      $("qpCloseModal").addEventListener("click", () => $("quickPrModal").classList.remove("open"));
+      $("qpRunBtn").addEventListener("click", runQuickPrBatch);
+      $("qpOpenAllBtn").addEventListener("click", () => {
+        qpResults.filter((r) => r.status === "ok" && r.editUrl)
+          .forEach((r) => window.open(r.editUrl, "_blank"));
+      });
+
+      // 行内「⚡ 快速建单」：待办卡片 / 明细表 / 本表共用，走同一个确认弹窗
+      document.body.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-quick-pr]");
+        if (!btn) return;
+        event.stopPropagation();
+        openQuickPrModal([btn.getAttribute("data-quick-pr")]);
+      });
+    }
 
     // ══════════════════════════════════════════════════════════════
     // SKU 创建板块
