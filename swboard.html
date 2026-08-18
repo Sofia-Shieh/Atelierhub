@@ -3458,14 +3458,16 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
     // ── 待发放清单三分区分类 ─────────────────────────────────────────
     // VCC 支付：境外 SaaS，直接刷公司虚拟卡
     const VCC_KEYWORDS = [
-      "Figma","Miro","Notion","Slack","Zoom","Google","Twitter",
-      "Tableau","Restream","SimilarWeb","Brandwatch","Meltwater",
+      "Figma","Miro","Slack","Zoom","Google","Twitter",
+      "Restream","SimilarWeb","Brandwatch","Meltwater",
       "Sprinklr","Sensor Tower","AppGrowing","EmailonAcid",
       "Consent Manager","Taggbox","Tubular","Social insight","Sanuker",
       "PR times","Bloomberg","Wind","Open AI","OpenAI","ChatGPT","Cursor","DIFY"
     ];
     // 集采：企业协议 / 批量采购软件（国内大厂 + 大型软件商）
     const COLLECTIVE_KEYWORDS = [
+      // Tableau / Notion 原先归在 VCC，按实际采购方式改走集采
+      "Tableau","Notion",
       "微软","Microsoft","JetBrains","Matlab","IncrediBuild","Perforce",
       "Coverity","PivotalPath","HybridCLR","Minas","Beluga","JumpServer",
       "北京贝锐","飞书","广大大","红鹰","汇科天下","火山云","蓝湖",
