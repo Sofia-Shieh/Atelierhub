@@ -1328,6 +1328,40 @@
     }
     .sku-preset-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
+    /* ── 今日待办分组 + 翻页 ──────────────────────────────────── */
+    .todo-group { margin-bottom: 22px; }
+    .todo-group:last-child { margin-bottom: 0; }
+    .todo-group-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 0 2px 8px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .todo-group-title { font-size: 13.5px; font-weight: 700; color: var(--text-1); }
+    .todo-group-count {
+      min-width: 20px; padding: 1px 7px; border-radius: 999px;
+      background: var(--surface-3); color: var(--text-2);
+      font-size: 11.5px; font-weight: 700; text-align: center;
+    }
+    .todo-group-note { font-size: 12px; color: var(--text-3); margin-left: auto; }
+
+    .todo-pager {
+      display: flex; align-items: center; justify-content: center;
+      gap: 12px; flex-wrap: wrap; margin-top: 12px;
+    }
+    .todo-pager-btn {
+      padding: 5px 12px; font-size: 12.5px; font-weight: 500;
+      color: var(--text-2); background: var(--surface);
+      border: 1px solid var(--border-2); border-radius: var(--r6);
+      cursor: pointer; transition: all 0.12s;
+    }
+    .todo-pager-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .todo-pager-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .todo-pager-info { font-size: 12px; color: var(--text-3); font-family: var(--mono); }
+
     /* ── 快速生成 PR ─────────────────────────────────────────────── */
     .qp-toolbar {
       display: flex;
@@ -1663,7 +1697,7 @@
           <div class="card-header">
             <div>
               <div class="card-title">待发放清单</div>
-              <div class="card-subtitle">按采购路径分组 · 代采 / 集采 / VCC 直付</div>
+              <div class="card-subtitle">按采购路径分组 · 代采 / 集采 / VCC 直付 · 组内再分 直接发放 / 缺货采购中 / 其他</div>
             </div>
           </div>
           <div class="card-body">
@@ -1672,9 +1706,9 @@
               <button class="sub-tab" data-sub="collective">📦 集采 <span class="sub-tab-count" id="countCollective">0</span></button>
               <button class="sub-tab" data-sub="vcc">💳 VCC <span class="sub-tab-count" id="countVcc">0</span></button>
             </div>
-            <div class="sub-panel active" id="subProxy"><div class="row-list" id="listProxy"></div></div>
-            <div class="sub-panel"        id="subCollective"><div class="row-list" id="listCollective"></div></div>
-            <div class="sub-panel"        id="subVcc"><div class="row-list" id="listVcc"></div></div>
+            <div class="sub-panel active" id="subProxy"></div>
+            <div class="sub-panel"        id="subCollective"></div>
+            <div class="sub-panel"        id="subVcc"></div>
           </div>
         </div>
 
@@ -2101,6 +2135,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       qpCategory: "all",
       qpStock: "all",
       qpSelected: new Set(),
+      todoPage: {},
       flashTimer: null,
     };
 
@@ -2601,6 +2636,55 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       `;
     }
 
+    // ── 今日待办分组配置 ───────────────────────────────────────────
+    // 分组判定（如与实际口径不符，只需改这一个函数）：
+    //   direct 直接发放   = 有货，可直接发
+    //   buying 缺货采购中 = 缺货且已关联 PR，采购在途
+    //   other  其他       = 缺货但还没提 PR，待提单
+    function todoGroupOf(row) {
+      if (!row.stockFlag) return "direct";
+      if (row.prCode)     return "buying";
+      return "other";
+    }
+
+    const TODO_GROUPS = [
+      { key: "direct", label: "直接发放",   icon: "✅", note: "有货，可直接发放" },
+      { key: "buying", label: "缺货采购中", icon: "🛒", note: "缺货且已关联 PR，采购在途" },
+      { key: "other",  label: "其他",       icon: "📋", note: "缺货待提单 / 其他情况" },
+    ];
+
+    const TODO_CATEGORIES = [
+      // paged：需要翻页的分组；mergeDirectIntoOther：该类别没有「直接发放」，并入「其他」
+      { key: "proxy",      panel: "subProxy",      label: "代采", paged: ["buying"] },
+      { key: "collective", panel: "subCollective", label: "集采", paged: [], mergeDirectIntoOther: true },
+      { key: "vcc",        panel: "subVcc",        label: "VCC",  paged: ["buying"] },
+    ];
+
+    const TODO_PAGE_SIZE = 10;
+
+    function todoPageKey(categoryKey, groupKey) {
+      return `${categoryKey}:${groupKey}`;
+    }
+
+    function getTodoPage(categoryKey, groupKey) {
+      return state.todoPage[todoPageKey(categoryKey, groupKey)] || 1;
+    }
+
+    function setTodoPage(categoryKey, groupKey, page) {
+      state.todoPage[todoPageKey(categoryKey, groupKey)] = page;
+    }
+
+    function renderTodoPager(categoryKey, groupKey, total, page, totalPages) {
+      const from = (page - 1) * TODO_PAGE_SIZE + 1;
+      const to   = Math.min(page * TODO_PAGE_SIZE, total);
+      return `
+        <div class="todo-pager">
+          <button type="button" class="todo-pager-btn" data-todo-page="${escapeHtml(categoryKey)}|${escapeHtml(groupKey)}|${page - 1}"${page <= 1 ? " disabled" : ""}>← 上一页</button>
+          <span class="todo-pager-info">第 ${page} / ${totalPages} 页 · 第 ${from}–${to} 条，共 ${total} 条</span>
+          <button type="button" class="todo-pager-btn" data-todo-page="${escapeHtml(categoryKey)}|${escapeHtml(groupKey)}|${page + 1}"${page >= totalPages ? " disabled" : ""}>下一页 →</button>
+        </div>`;
+    }
+
     function renderTodoList() {
       const rows = [...state.snapshot.rows].sort((a, b) => b.deliverCreateTime.localeCompare(a.deliverCreateTime));
 
@@ -2635,14 +2719,52 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
           <div class="empty-sub">拉取最新数据后自动显示</div>
         </div>`;
 
-      [
-        { id: "listProxy",      key: "proxy",      label: "代采" },
-        { id: "listCollective", key: "collective",  label: "集采" },
-        { id: "listVcc",        key: "vcc",         label: "VCC" },
-      ].forEach(({ id, key, label }) => {
-        $(id).innerHTML = groups[key].length
-          ? groups[key].map(r => renderRowCard(r)).join("")
-          : emptyHtml(label);
+      TODO_CATEGORIES.forEach((category) => {
+        const panel = $(category.panel);
+        if (!panel) return;
+        const categoryRows = groups[category.key] || [];
+
+        if (!categoryRows.length) {
+          panel.innerHTML = emptyHtml(category.label);
+          return;
+        }
+
+        // 组内二次分组；集采没有「直接发放」，整体并入「其他」
+        const buckets = { direct: [], buying: [], other: [] };
+        categoryRows.forEach((row) => {
+          let group = todoGroupOf(row);
+          if (category.mergeDirectIntoOther && group === "direct") group = "other";
+          buckets[group].push(row);
+        });
+
+        panel.innerHTML = TODO_GROUPS.map((group) => {
+          const bucket = buckets[group.key];
+          if (!bucket.length) return "";
+
+          const paged = (category.paged || []).includes(group.key);
+          let listRows = bucket;
+          let pagerHtml = "";
+
+          if (paged && bucket.length > TODO_PAGE_SIZE) {
+            const totalPages = Math.ceil(bucket.length / TODO_PAGE_SIZE);
+            // 数据变少时把页码收回到有效范围
+            const page = Math.min(Math.max(getTodoPage(category.key, group.key), 1), totalPages);
+            setTodoPage(category.key, group.key, page);
+            listRows  = bucket.slice((page - 1) * TODO_PAGE_SIZE, page * TODO_PAGE_SIZE);
+            pagerHtml = renderTodoPager(category.key, group.key, bucket.length, page, totalPages);
+          }
+
+          return `
+            <section class="todo-group" data-todo-group="${escapeHtml(category.key)}:${escapeHtml(group.key)}">
+              <header class="todo-group-head">
+                <span class="todo-group-title">${group.icon} ${escapeHtml(group.label)}</span>
+                <span class="todo-group-count">${bucket.length}</span>
+                <span class="todo-group-note">${escapeHtml(group.note)}</span>
+              </header>
+              <div class="row-list">${listRows.map((r) => renderRowCard(r)).join("")}</div>
+              ${pagerHtml}
+            </section>`;
+        }).join("") || emptyHtml(category.label);
       });
     }
 
@@ -3051,6 +3173,19 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         });
       });
 
+      // 分组翻页
+      document.querySelector('[data-panel="todo"]').addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-todo-page]");
+        if (!btn || btn.disabled) return;
+        e.stopPropagation();
+        const [categoryKey, groupKey, page] = btn.getAttribute("data-todo-page").split("|");
+        setTodoPage(categoryKey, groupKey, parseInt(page, 10) || 1);
+        renderTodoList();
+        // 翻页后把该分组滚回视野顶部，避免停在半截
+        document.querySelector(`[data-todo-group="${categoryKey}:${groupKey}"]`)
+          ?.scrollIntoView({ block: "nearest" });
+      });
+
       // 待发放清单子 tab
       document.getElementById("todoSubTabs").addEventListener("click", (e) => {
         const btn = e.target.closest(".sub-tab");
@@ -3196,15 +3331,17 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       return data;
     }
 
+    const TODO_PANEL_IDS = ["subProxy", "subCollective", "subVcc"];
+
     function showSkeletonLoader() {
       // 给卡片列表加半透明遮罩感
-      ["listProxy","listCollective","listVcc"].forEach(id => {
+      TODO_PANEL_IDS.forEach(id => {
         const el = $(id);
         if (el) { el.style.opacity = "0.4"; el.style.pointerEvents = "none"; }
       });
     }
     function hideSkeletonLoader() {
-      ["listProxy","listCollective","listVcc"].forEach(id => {
+      TODO_PANEL_IDS.forEach(id => {
         const el = $(id);
         if (el) { el.style.opacity = ""; el.style.pointerEvents = ""; }
       });
