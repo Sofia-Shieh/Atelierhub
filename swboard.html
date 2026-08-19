@@ -3213,6 +3213,15 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       return FONT_KEYWORDS.some(kw => name.includes(kw.toLowerCase()));
     }
 
+    // 采购类别 pathCode（来自 neone PTP 交接文档）
+    const PURCHASE_TYPE_PATH = {
+      font:    "MK00020002>MK00020071", // 字体
+      art:     "MK00020002>MK00020079", // 美术软件
+      dev:     "MK00020002>MK00020074", // 开发软件
+      office:  "MK00020002>MK00020076", // 通用办公软件
+      media:   "MK00020002>MK00020072", // 音视频软件
+    };
+
     /** 弹窗打开时的默认预算：字体 > 非代采 > 代采 */
     function defaultBudgetKey(row) {
       if (isFontRow(row)) return "font";
@@ -3433,6 +3442,8 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
             purchaseTypePathCode = exact.purchase_type_path_code || "";
           }
         } catch (e) { /* 查不到就留空 */ }
+        // SAM 台账没命中时，字体单至少把采购类别兜底成「字体」，省得草稿里空着
+        if (!purchaseTypePathCode && isFontRow(row)) purchaseTypePathCode = PURCHASE_TYPE_PATH.font;
 
         // Step 2: 查预算匹配受益部门 code
         setPrStatus("Step 2/3  匹配受益部门…");

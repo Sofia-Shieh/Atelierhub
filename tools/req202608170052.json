@@ -1,0 +1,28 @@
+{
+  "_说明": [
+    "REQ202608170052 · 方正大标宋_GBK Regular · 8000 CNY · 内嵌+宣发永久授权 · 授权项目原神",
+    "字段只填了交接文档明确给出的那些。预计效果收益 / 字体预算号对应的入参名文档里没写，",
+    "提交前先跑 `python3 tools/ptp_mcp.py schema add_demand` 看真实 schema，再往下面补。",
+    "state=1 建草稿，不直接提交；草稿在 neone 里核对预算与采购类别后再点提交。"
+  ],
+  "demandHead": {
+    "applicant": "yuqing.xie02",
+    "departmentCode": "1396",
+    "currency": "CNY",
+    "demandType": 1,
+    "applyType": "common",
+    "state": 1,
+    "title": "方正大标宋_GBK Regular-张沁田-REQ202608170052",
+    "applyReason": "国际化组>创意设计组\n申请采购方正大标宋_GBK Regular（永久授权版本），原神国际化宣发物料制作需要采买 1 款字体。授权项目：原神；授权范围：内嵌+宣发，永久授权；报价 8000 人民币。关联申请单：REQ202608170052，申请人：张沁田。"
+  },
+  "rows": [
+    {
+      "title": "方正大标宋_GBK Regular",
+      "purchaseTypePathCode": "MK00020002>MK00020071",
+      "quantity": "1",
+      "unitPrice": "8000",
+      "currency": "CNY",
+      "flowType": 4
+    }
+  ]
+}
