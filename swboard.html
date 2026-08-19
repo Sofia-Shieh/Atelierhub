@@ -33,7 +33,7 @@
       --text-sidebar: rgba(255,255,255,0.9);
 
       /* Sidebar */
-      --sidebar-bg:   #0F1117;
+      --sidebar-bg:   #1B1E30;
       --sidebar-surface: rgba(255,255,255,0.06);
       --sidebar-border: rgba(255,255,255,0.08);
       --sidebar-active: rgba(99,102,241,0.2);
@@ -559,7 +559,7 @@
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
-      height: 2px;
+      height: 3px;
       background: var(--border);
       border-radius: var(--r12) var(--r12) 0 0;
     }
@@ -609,25 +609,25 @@
 
     /* Color variants */
     .metric-card.wait::before,
-    .kpi-card.wait::before    { background: linear-gradient(90deg, var(--amber), transparent); }
+    .kpi-card.wait::before    { background: var(--amber); }
     .metric-card.wait .metric-value,
     .kpi-card.wait .kpi-value { color: var(--amber); }
     .kpi-card.wait .kpi-dot   { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,0.5); }
 
     .metric-card.stock::before,
-    .kpi-card.stock::before    { background: linear-gradient(90deg, var(--red), transparent); }
+    .kpi-card.stock::before    { background: var(--red); }
     .metric-card.stock .metric-value,
     .kpi-card.stock .kpi-value { color: var(--red); }
     .kpi-card.stock .kpi-dot   { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.5); }
 
     .metric-card.complete::before,
-    .kpi-card.complete::before    { background: linear-gradient(90deg, var(--green), transparent); }
+    .kpi-card.complete::before    { background: var(--green); }
     .metric-card.complete .metric-value,
     .kpi-card.complete .kpi-value { color: var(--green); }
     .kpi-card.complete .kpi-dot   { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
 
     .metric-card.closed::before,
-    .kpi-card.closed::before    { background: linear-gradient(90deg, var(--text-3), transparent); }
+    .kpi-card.closed::before    { background: var(--text-3); }
     .metric-card.closed .metric-value,
     .kpi-card.closed .kpi-value { color: var(--text-3); }
     .kpi-card.closed .kpi-dot  { background: var(--text-3); }
