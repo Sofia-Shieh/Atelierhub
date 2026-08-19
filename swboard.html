@@ -1842,6 +1842,18 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         <input type="number" id="prMonths" value="1" min="1" max="36" />
       </div>
     </div>
+    <div style="margin-bottom:12px;">
+      <div class="fact-label" style="margin-bottom:6px;">预算选用</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <select id="prBudgetKey">
+          <option value="proxy">代采 Q2</option>
+          <option value="nonProxy">非代采 Q2</option>
+          <option value="font">字体预算</option>
+        </select>
+        <input type="text" id="prFontBudgetNo" placeholder="字体预算号，例：BZNX2026390866-3" />
+      </div>
+      <div id="prBudgetName" style="margin-top:6px;font-size:12px;color:var(--text-3);font-family:var(--mono);min-height:16px;word-break:break-all;"></div>
+    </div>
     <div style="margin-bottom:14px;">
       <div class="fact-label" style="margin-bottom:6px;">受益部门路径</div>
       <input type="text" id="prBenefitDept" placeholder="例：米哈游>崩坏：星穹铁道>程序组>引擎组" />
@@ -3177,9 +3189,35 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       return "proxy";
     }
 
-    // 预算配置：代采Q2 vs 非代采Q2
-    const BUDGET_PROXY     = { no: "BZNX2026390868-3", desc: "代采-Q2" };
-    const BUDGET_NON_PROXY = { no: "BZNX2026390866-3", desc: "非代采-Q2" };
+    // 预算配置：代采Q2 / 非代采Q2 / 字体
+    const BUDGET_PROXY     = { key: "proxy",    no: "BZNX2026390868-3", desc: "代采-Q2" };
+    const BUDGET_NON_PROXY = { key: "nonProxy", no: "BZNX2026390866-3", desc: "非代采-Q2" };
+    // 字体走独立预算，预算号不硬编码：弹窗里填一次存 localStorage，
+    // 填完立刻调 budget/selection/list 回显预算名称，确认确实是字体预算再提交。
+    const FONT_BUDGET_STORAGE_KEY = "sam-board-font-budget-no";
+    function getFontBudgetNo() {
+      try { return localStorage.getItem(FONT_BUDGET_STORAGE_KEY) || ""; } catch (e) { return ""; }
+    }
+    function setFontBudgetNo(no) {
+      try { localStorage.setItem(FONT_BUDGET_STORAGE_KEY, no); } catch (e) { /* 隐私模式忽略 */ }
+    }
+
+    // 字体 / 字库厂商关键词：命中即默认走字体预算
+    const FONT_KEYWORDS = [
+      "字体","字库","方正","汉仪","蒙纳","华康","造字工房","文鼎","锐字","字加","喜鹊","仓耳","叶根友",
+      "思源","GBK","Monotype","Fontworks","Morisawa","TypeType","Linotype","MyFonts","Typeface","Font"
+    ];
+
+    function isFontRow(row) {
+      const name = ((row.skuName || "") + " " + (row.vendor || "") + " " + (row.version || "")).toLowerCase();
+      return FONT_KEYWORDS.some(kw => name.includes(kw.toLowerCase()));
+    }
+
+    /** 弹窗打开时的默认预算：字体 > 非代采 > 代采 */
+    function defaultBudgetKey(row) {
+      if (isFontRow(row)) return "font";
+      return isNonProxy(row) ? "nonProxy" : "proxy";
+    }
     const BUDGET_COMMON = {
       business_type_path_code: "S00016030>S00001511>S00016086",
       space_id: "8",
@@ -3249,18 +3287,73 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       return data;
     }
 
+    /** 读弹窗里当前选的预算；字体预算号由使用者填 */
+    function resolveBudget() {
+      const key = $("prBudgetKey").value;
+      if (key === "font") return { key: "font", no: $("prFontBudgetNo").value.trim(), desc: "字体" };
+      if (key === "nonProxy") return BUDGET_NON_PROXY;
+      return BUDGET_PROXY;
+    }
+
+    // budget_no → { name, deptList }，命中过的不重复请求
+    const budgetMetaCache = new Map();
+
+    async function loadBudgetMeta(budget) {
+      if (!budget.no) return { name: "", deptList: [] };
+      if (budgetMetaCache.has(budget.no)) return budgetMetaCache.get(budget.no);
+      const meta = { name: "", deptList: [] };
+      try {
+        const resp = await fetch(PTP_BASE + "/neone-ptp-svc/budget/selection/list", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: [{ budget_no: budget.no, space_id: BUDGET_COMMON.space_id }] }),
+        });
+        const data = await resp.json();
+        const sel = (data.data && data.data.budget_selection_list && data.data.budget_selection_list[0]) || null;
+        if (sel) {
+          meta.name = sel.budget_name || sel.name || sel.budget_title || "";
+          meta.deptList = sel.expense_department_list || [];
+        }
+      } catch (e) { /* 代理没起来就留空，提交时按未匹配处理 */ }
+      if (meta.name || meta.deptList.length) budgetMetaCache.set(budget.no, meta);
+      return meta;
+    }
+
+    /** 切换预算后：显示/隐藏字体预算号输入框，并把接口返回的预算名称回显出来核对 */
+    async function refreshPrBudget() {
+      const budget = resolveBudget();
+      const el = $("prBudgetName");
+      $("prFontBudgetNo").style.display = budget.key === "font" ? "" : "none";
+      if (!budget.no) {
+        el.style.color = "var(--red)";
+        el.textContent = budget.key === "font" ? "⚠️ 请填写字体预算号（填一次后本机记住）" : "";
+        return;
+      }
+      el.style.color = "var(--text-3)";
+      el.textContent = `${budget.no} · 查询预算名称…`;
+      const meta = await loadBudgetMeta(budget);
+      if (resolveBudget().no !== budget.no) return; // 期间又切了预算，丢弃这次结果
+      if (meta.name) {
+        el.style.color = "var(--text-3)";
+        el.textContent = `${budget.no} · 预算名称：${meta.name}`;
+      } else {
+        el.style.color = "var(--red)";
+        el.textContent = `${budget.no} · ⚠️ 未取到预算名称，提交前请在采购系统核对`;
+      }
+    }
+
     async function openPrModal(docCode) {
       const row = (state.snapshot?.rows || []).find(r => r.docCode === docCode);
       if (!row) return;
       prCurrentRow = row;
 
-      const nonProxy = isNonProxy(row);
-      const budget = nonProxy ? BUDGET_NON_PROXY : BUDGET_PROXY;
-
       $("prModalDesc").textContent = `发放单：${row.docCode}  |  申请单：${row.sourceDocCode}  |  软件：${row.skuName} ${row.version}  |  领用人：${row.claimUserName || row.requesterName}`;
       $("prBenefitDept").value = getDeptDisplay(row);
       $("prMonths").value = "1";
       $("prPurchaseType").value = "account_add";
+      $("prBudgetKey").value = defaultBudgetKey(row);
+      $("prFontBudgetNo").value = getFontBudgetNo();
+      refreshPrBudget();
       $("prStatus").textContent = "正在获取申请事由…";
       $("prStatus").style.display = "block";
       $("prStatus").style.color = "var(--muted)";
@@ -3290,10 +3383,6 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         <div class="fact"><div class="fact-label">需求标题</div><div class="fact-value" style="font-size:13px">${escapeHtml(title)}</div></div>
         <div class="fact"><div class="fact-label">需求产生原因</div><div class="fact-value" style="font-size:12px;white-space:pre-wrap;line-height:1.7">${escapeHtml(reason)}</div></div>
         <div class="fact"><div class="fact-label">预计效果收益</div><div class="fact-value" style="font-size:13px">${escapeHtml(benefit)}</div></div>
-        <div class="fact" style="background:${nonProxy ? "rgba(45,124,89,0.08)" : "rgba(15,118,110,0.08)"}">
-          <div class="fact-label">预算选用</div>
-          <div class="fact-value" style="font-size:13px">${escapeHtml(budget.no)} · ${nonProxy ? "非代采" : "代采"} Q2</div>
-        </div>
       `;
 
       $("prStatus").style.display = "none";
@@ -3313,8 +3402,9 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         const title = buildPrTitle(row);
         const reason = buildPrReason(row, note);
         const benefit = buildPrBenefit(row, note);
-        const nonProxy = isNonProxy(row);
-        const budget = nonProxy ? BUDGET_NON_PROXY : BUDGET_PROXY;
+        const budget = resolveBudget();
+        if (!budget.no) throw new Error("请先填写字体预算号");
+        if (budget.key === "font") setFontBudgetNo(budget.no);
         const deptDisplay = $("prBenefitDept").value.trim() || getDeptDisplay(row);
 
         // Step 1: 查 SAM 台账，取 sku_code 和 purchase_type_path_code
@@ -3348,13 +3438,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         setPrStatus("Step 2/3  匹配受益部门…");
         let expenseDeptCode = "";
         try {
-          const budgetResp = await fetch(PTP_BASE + "/neone-ptp-svc/budget/selection/list", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ items: [{ budget_no: budget.no, space_id: BUDGET_COMMON.space_id }] }),
-          });
-          const budgetData = await budgetResp.json();
-          const deptList = (budgetData.data && budgetData.data.budget_selection_list && budgetData.data.budget_selection_list[0] && budgetData.data.budget_selection_list[0].expense_department_list) || [];
+          const deptList = (await loadBudgetMeta(budget)).deptList;
           if (deptList.length > 0) {
             const normalize = s => s.replace(/\s/g, "").toLowerCase();
             const parts = deptDisplay.split(">");
@@ -3493,6 +3577,13 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       }
     }
     $("closePrModal").addEventListener("click", () => $("prModal").classList.remove("open"));
+    $("prBudgetKey").addEventListener("change", refreshPrBudget);
+    $("prFontBudgetNo").addEventListener("change", () => {
+      const no = $("prFontBudgetNo").value.trim();
+      $("prFontBudgetNo").value = no;
+      if (no) setFontBudgetNo(no);
+      refreshPrBudget();
+    });
     $("prSubmitBtn").addEventListener("click", () => submitPr(false));
     $("prDraftBtn").addEventListener("click", () => submitPr(true));
 
