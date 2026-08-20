@@ -1,0 +1,164 @@
+/* ─────────────────────────────────────────────────────────────
+   SAM 看板配色补丁 · 取自 swboard_2.html（图1 配色）
+   用法：整段贴到目标文件 </style> 之前（后写的规则优先级更高，
+        会覆盖前面的同名声明）。只改颜色，不动任何结构。
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+      /* Backgrounds */
+      --bg:           #F4F6F9;
+      --bg-subtle:    #EAECF0;
+      --surface:      #FFFFFF;
+      --surface-2:    #F8F9FB;
+      --surface-3:    #EEF0F4;
+      --surface-4:    #E4E7ED;
+
+      /* Borders */
+      --border:       rgba(0,0,0,0.08);
+      --border-2:     rgba(0,0,0,0.14);
+      --border-3:     rgba(0,0,0,0.2);
+
+      /* Text */
+      --text-1:       #0D1117;
+      --text-2:       #4B5563;
+      --text-3:       #9CA3AF;
+      --text-inv:     #FFFFFF;
+      --text-sidebar: rgba(255,255,255,0.9);
+
+      /* Sidebar */
+      --sidebar-bg:   #0F1117;
+      --sidebar-surface: rgba(255,255,255,0.06);
+      --sidebar-border: rgba(255,255,255,0.08);
+      --sidebar-active: rgba(99,102,241,0.2);
+      --sidebar-active-border: #6366F1;
+
+      /* Primary — Indigo */
+      --primary:        #4F46E5;
+      --primary-hover:  #4338CA;
+      --primary-light:  #EEF2FF;
+      --primary-mid:    rgba(79,70,229,0.12);
+      --primary-glow:   rgba(99,102,241,0.35);
+
+      /* Semantic */
+      --green:          #10B981;
+      --green-light:    #ECFDF5;
+      --green-mid:      rgba(16,185,129,0.12);
+
+      --amber:          #F59E0B;
+      --amber-light:    #FFFBEB;
+      --amber-mid:      rgba(245,158,11,0.12);
+
+      --red:            #EF4444;
+      --red-light:      #FEF2F2;
+      --red-mid:        rgba(239,68,68,0.12);
+
+      --violet:         #8B5CF6;
+      --violet-light:   #F5F3FF;
+      --violet-mid:     rgba(139,92,246,0.12);
+
+      --cyan:           #06B6D4;
+      --cyan-light:     #ECFEFF;
+
+      /* Alias for legacy compat */
+      --blue:           var(--primary);
+      --blue-light:     var(--primary-light);
+      --blue-mid:       var(--primary-mid);
+
+      /* Radius */
+      --r4:  4px;
+      --r6:  6px;
+      --r8:  8px;
+      --r10: 10px;
+      --r12: 12px;
+      --r16: 16px;
+      --r20: 20px;
+      --r24: 24px;
+
+      /* Typography */
+      --sans: "Inter", "PingFang SC", "SF Pro Display", "Microsoft YaHei UI", system-ui, sans-serif;
+      --mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+      /* Shadows */
+      --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-xl: 0 32px 80px rgba(0,0,0,0.16), 0 8px 24px rgba(0,0,0,0.08);
+    }
+
+.metric-card::before,
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--border);
+      border-radius: var(--r12) var(--r12) 0 0;
+    }
+.metric-card.wait::before,
+    .kpi-card.wait::before    { background: linear-gradient(90deg, var(--amber), transparent); }
+.metric-card.wait .metric-value,
+    .kpi-card.wait .kpi-value { color: var(--amber); }
+.metric-card.stock::before,
+    .kpi-card.stock::before    { background: linear-gradient(90deg, var(--red), transparent); }
+.metric-card.stock .metric-value,
+    .kpi-card.stock .kpi-value { color: var(--red); }
+.metric-card.complete::before,
+    .kpi-card.complete::before    { background: linear-gradient(90deg, var(--green), transparent); }
+.metric-card.complete .metric-value,
+    .kpi-card.complete .kpi-value { color: var(--green); }
+.metric-card.closed::before,
+    .kpi-card.closed::before    { background: linear-gradient(90deg, var(--text-3), transparent); }
+.metric-card.closed .metric-value,
+    .kpi-card.closed .kpi-value { color: var(--text-3); }
+.kpi-card.wait .kpi-dot   { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,0.5); }
+.kpi-card.stock .kpi-dot   { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+.kpi-card.complete .kpi-dot   { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+.kpi-card.closed .kpi-dot  { background: var(--text-3); }
+.btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 1px 3px rgba(79,70,229,0.35), 0 0 0 1px rgba(79,70,229,0.1);
+    }
+.badge.wait   { color: #92400E; background: var(--amber-light);  border-color: rgba(245,158,11,0.2); }
+.badge.stock  { color: #991B1B; background: var(--red-light);    border-color: rgba(239,68,68,0.2); }
+.badge.ready  { color: #065F46; background: var(--green-light);  border-color: rgba(16,185,129,0.2); }
+.badge.pr     { color: #5B21B6; background: var(--violet-light); border-color: rgba(139,92,246,0.2); }
+.badge.muted  { color: var(--text-3); background: var(--surface-3); border-color: var(--border); }
+.row-card.out-of-stock {
+      border-left: 3px solid var(--red);
+      background: linear-gradient(135deg, var(--surface) 0%, rgba(239,68,68,0.02) 100%);
+    }
+.row-card.overdue {
+      border-left: 3px solid var(--amber);
+    }
+.code-block {
+      background: #0D1117;
+      color: #79C0FF;
+      border-radius: var(--r8);
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.7;
+      overflow-x: auto;
+      margin-top: 12px;
+      white-space: pre;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+/* ─────────────────────────────────────────────────────────────
+   注意：一处 token 覆盖不到的地方
+   ─────────────────────────────────────────────────────────────
+   行卡片里的「软件名」在原版是内联写法：
+     <span style="color:var(--green);font-weight:700;">软件名</span>
+   只要目标文件也用 var(--green)，上面的 :root 就能把它改回绿色。
+
+   但从图2 看软件名是深藏蓝，说明那里的颜色很可能被直接写死了
+   （例如 color:#1E3A8A 或 color:var(--text-1)），CSS 变量覆盖不到。
+   这种情况需要改标签本身，搜 row-title 附近的软件名 span，把颜色
+   改回 var(--green) 即可。
+
+   这里不加 .row-title span { color: var(--green) !important }
+   之类的兜底规则：同一个 h3 里还有版本号 span（灰色 var(--text-3)）
+   和超时标签，一刀切会把它们一起染绿。
+   ───────────────────────────────────────────────────────────── */
