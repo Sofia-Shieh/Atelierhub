@@ -1205,8 +1205,8 @@
     }
 
     .code-block {
-      background: #0D1117;
-      color: #79C0FF;
+      background: var(--sidebar-bg);
+      color: #A5B4FC;
       border-radius: var(--r8);
       padding: 14px 16px;
       font-family: var(--mono);
@@ -1388,7 +1388,7 @@
       display: inline-block; padding: 1px 7px; border-radius: 4px;
       font-size: 11px; font-weight: 600; white-space: nowrap;
     }
-    .qp-cat.proxy      { color: #0F766E; background: rgba(15,118,110,0.1); }
+    .qp-cat.proxy      { color: #155E75; background: var(--cyan-light); }
     .qp-cat.collective { color: #5B21B6; background: var(--violet-light); }
     .qp-cat.vcc        { color: #92400E; background: var(--amber-light); }
 
@@ -2511,8 +2511,8 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         } else if (src === "SAM Backend") {
           const ts = state.snapshot?.importedAt ? new Date(state.snapshot.importedAt).toLocaleString("zh-CN") : "";
           notice.innerHTML = `<strong>✅ 已连接后端：</strong> 数据来自 SAM 后端缓存（约 1 小时刷新一次）。如需立即更新，点击「拉取最新数据」。最后同步：${ts}`;
-          notice.style.background = "#EAF4EE";
-          notice.style.borderColor = "rgba(45,134,83,0.2)";
+          notice.style.background = "var(--green-light)";
+          notice.style.borderColor = "rgba(16,185,129,0.2)";
         } else {
           notice.innerHTML = `<strong>数据来源：</strong> ${src}`;
         }
@@ -2805,7 +2805,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
           : `<button type="button" class="secondary" data-quick-pr="${escapeHtml(row.docCode)}" style="font-size:12px;padding:4px 10px;white-space:nowrap;">⚡ 建单</button>
              <button type="button" class="secondary" data-create-pr="${escapeHtml(row.docCode)}" style="font-size:12px;padding:4px 10px;white-space:nowrap;margin-top:4px;">📋 提 PR</button>`;
         return `
-        <tr style="${isOverdue ? "background:rgba(220,50,50,.04);" : ""}">
+        <tr style="${isOverdue ? "background:rgba(239,68,68,0.04);" : ""}">
           <td>
             <div><strong style="font-family:var(--mono);font-size:12px;">${escapeHtml(row.docCode)}</strong></div>
             <div class="small" style="margin-top:3px;">
@@ -3099,7 +3099,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
           } else if (result.status === "no_wait") {
             area.innerHTML = `<div style="padding:12px;background:var(--surface-2);border-radius:var(--r6);font-size:13px;color:var(--text-2);">⏳ 无待发放行，当前状态：${(result.states || []).join(", ")}</div>`;
           } else if (!result.ok) {
-            area.innerHTML = `<div style="padding:12px;background:#FFF0F0;border-radius:var(--r6);font-size:13px;color:var(--red);">❌ ${escapeHtml(result.error || "查询失败")}</div>`;
+            area.innerHTML = `<div style="padding:12px;background:var(--red-light);border-radius:var(--r6);font-size:13px;color:var(--red);">❌ ${escapeHtml(result.error || "查询失败")}</div>`;
           } else if (result.status === "wait_deliver") {
             const p = result.preview;
             _previewPayload = { pr_code: prCode, delivery_date: date, account };
@@ -3110,7 +3110,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
                 ${l.auth_account ? ` · 账号: ${escapeHtml(l.auth_account)}` : ""}
               </div>`).join("");
             area.innerHTML = `
-              <div style="border:1px solid var(--green);border-radius:var(--r8);padding:14px;background:#EAF4EE;">
+              <div style="border:1px solid var(--green);border-radius:var(--r8);padding:14px;background:var(--green-light);">
                 <div style="font-weight:700;margin-bottom:8px;color:var(--green);">✅ 预览就绪</div>
                 <div style="font-size:13px;margin-bottom:6px;"><strong>软件：</strong>${escapeHtml(p.sku_name)}</div>
                 <div style="font-size:13px;margin-bottom:8px;"><strong>发放单：</strong>${escapeHtml(p.doc_code)} · ${p.row_count} 行</div>
@@ -3120,7 +3120,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
             runBtn.style.display = "block";
           }
         } catch (e) {
-          area.innerHTML = `<div style="padding:12px;background:#FFF0F0;border-radius:var(--r6);font-size:13px;color:var(--red);">❌ 请求失败：${escapeHtml(e.message)}</div>`;
+          area.innerHTML = `<div style="padding:12px;background:var(--red-light);border-radius:var(--r6);font-size:13px;color:var(--red);">❌ 请求失败：${escapeHtml(e.message)}</div>`;
         }
       }
 
@@ -3148,7 +3148,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
             renderTodoList();
           } else {
             const area = document.getElementById("_deliverPreviewArea");
-            if (area) area.innerHTML += `<div style="margin-top:10px;padding:10px;background:#FFF0F0;border-radius:var(--r6);font-size:13px;color:var(--red);">❌ 发放失败：${escapeHtml(result.error || "未知错误")}</div>`;
+            if (area) area.innerHTML += `<div style="margin-top:10px;padding:10px;background:var(--red-light);border-radius:var(--r6);font-size:13px;color:var(--red);">❌ 发放失败：${escapeHtml(result.error || "未知错误")}</div>`;
             btn.disabled = false;
             btn.textContent = "✅ 确认发放";
           }
@@ -3626,7 +3626,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         <div class="fact"><div class="fact-label">需求标题</div><div class="fact-value" style="font-size:13px">${escapeHtml(title)}</div></div>
         <div class="fact"><div class="fact-label">需求产生原因</div><div class="fact-value" style="font-size:12px;white-space:pre-wrap;line-height:1.7">${escapeHtml(reason)}</div></div>
         <div class="fact"><div class="fact-label">预计效果收益</div><div class="fact-value" style="font-size:13px">${escapeHtml(benefit)}</div></div>
-        <div class="fact" style="background:${nonProxy ? "rgba(45,124,89,0.08)" : "rgba(15,118,110,0.08)"}">
+        <div class="fact" style="background:${nonProxy ? "rgba(16,185,129,0.08)" : "rgba(6,182,212,0.08)"}">
           <div class="fact-label">预算选用</div>
           <div class="fact-value" style="font-size:13px">${escapeHtml(budget.no)} · ${nonProxy ? "非代采" : "代采"} Q2</div>
         </div>
@@ -3826,7 +3826,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         const deptLine = result.expenseDeptCode ? `受益部门已匹配：${result.deptDisplay}` : "⚠️ 受益部门未匹配，请手动选择";
 
         $("prFormPreview").innerHTML += `
-          <div class="fact" style="background:rgba(45,124,89,0.08);border-color:rgba(45,124,89,0.2)">
+          <div class="fact" style="background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2)">
             <div class="fact-label">✅ 草稿已创建：${escapeHtml(result.prCode)}</div>
             <div class="fact-value" style="font-size:12px;line-height:1.8">${escapeHtml(skuLine)}<br>${escapeHtml(deptLine)}<br>请在采购系统核查明细后点击「提交」。</div>
           </div>
@@ -3926,7 +3926,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         })();
         const checked = state.qpSelected.has(row.docCode) ? " checked" : "";
         return `
-        <tr style="${isOverdue ? "background:rgba(220,50,50,.04);" : ""}">
+        <tr style="${isOverdue ? "background:rgba(239,68,68,0.04);" : ""}">
           <td><input type="checkbox" class="qp-row-check" data-qp-pick="${escapeHtml(row.docCode)}"${checked} /></td>
           <td>
             <div><strong style="font-family:var(--mono);font-size:12px;">${escapeHtml(row.sourceDocCode)}</strong></div>
