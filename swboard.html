@@ -1408,6 +1408,13 @@
       font-size: 13px;
       line-height: 1.7;
     }
+    .sku-ai-notice.info {
+      border-color: var(--amber-mid);
+      background: var(--amber-light);
+      color: #92400E;
+    }
+    .sku-ai-notice.info .sku-ai-retry { border-color: var(--amber); color: #92400E; }
+    .sku-ai-notice.info .sku-ai-retry:hover { background: var(--amber); color: #fff; }
     .sku-ai-notice[hidden] { display: none; }
     .sku-ai-retry {
       margin-left: 6px;
@@ -1734,7 +1741,7 @@ Figma Professional 年订阅，$144/人
 汉仪字库 汉仪汉黑 永久授权 ¥30000
 Cursor Enterprise，Anysphere，按席位年费"></textarea>
           <div class="sku-parse-footer">
-            <span class="sku-parse-hint">支持粘贴任意格式文字、表格复制内容；AI 自动识别字段，结果可逐行修改</span>
+            <span class="sku-parse-hint">支持粘贴任意格式文字、表格复制内容；优先用 AI 识别，AI 不可用时自动改用本地规则解析，结果均可逐行修改</span>
             <div class="sku-parse-loading" id="skuParseLoading">
               <div class="sku-spin"></div> AI 识别中…
             </div>
@@ -3605,12 +3612,13 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         : "var(--text-2)";
     }
 
-    // 后端缺 ANTHROPIC_API_KEY / 未接 AI 时：常驻提示，且不影响手工填写
-    function skuShowAiNotice(message) {
+    // 后端缺 ANTHROPIC_API_KEY / 未接 AI 时：提示一次，但填充本身已由本地规则接管
+    function skuShowAiNotice(message, tone) {
       const el = $("skuAiNotice");
       if (!el) return;
-      el.innerHTML = `${escapeHtml(message)}<br>下方表格可以照常手工填写、生成并下载 Excel，不受影响。`
-        + ` <button type="button" class="sku-ai-retry" id="skuAiRetry">配置好了，重试</button>`;
+      el.className = tone === "info" ? "sku-ai-notice info" : "sku-ai-notice";
+      el.innerHTML = `${escapeHtml(message)}<br>已改用本地规则解析（准确度低于 AI，请核对高亮行）；配好 key 后点右侧按钮可切回 AI。`
+        + ` <button type="button" class="sku-ai-retry" id="skuAiRetry">配好了，用 AI 重试</button>`;
       el.hidden = false;
       $("skuAiRetry").addEventListener("click", () => {
         _skuAiDisabled = false;
@@ -3618,12 +3626,11 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         $("skuParseBtn").disabled = false;
         if ($("skuParseInput").value.trim()) skuParse();
       });
-      skuSetStatus("", "");
     }
 
     function skuHideAiNotice() {
       const el = $("skuAiNotice");
-      if (el) { el.hidden = true; el.textContent = ""; }
+      if (el) { el.hidden = true; el.textContent = ""; el.className = "sku-ai-notice"; }
     }
 
     function skuIsAiUnconfigured(message) {
@@ -3782,10 +3789,205 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       return (item.name || item.vendor) ? item : null;
     }
 
+    // ── 本地规则解析（不依赖 AI / ANTHROPIC_API_KEY）────────────────────
+    // AI 不可用时用它兜底：能从整句、逗号分隔、Excel 粘贴的多列里
+    // 抽出 软件名 / 版本 / 厂商 / 单价 / 币种，抽不出的字段留空由人补。
+    const SKU_CURRENCY_TOKENS = [
+      [/US\s*\$|\$|USD|美元|美金/i, "USD"],
+      [/€|EUR|欧元/i, "EUR"],
+      [/￥|¥|RMB|CNY|人民币|元/i, "CNY"],
+    ];
+    const SKU_MONEY_PATTERNS = [
+      /(?:US\s*\$|\$|€|￥|¥)\s*([\d][\d,]*(?:\.\d+)?)/i,
+      /(?:USD|CNY|RMB|EUR)\s*([\d][\d,]*(?:\.\d+)?)/i,
+      /([\d][\d,]*(?:\.\d+)?)\s*(?:元|美元|美金|欧元|USD|CNY|RMB|EUR)/i,
+    ];
+    // 长的排前面，避免 "Pro" 抢在 "Professional" 前面命中
+    const SKU_VERSION_KEYWORDS = [
+      "单一游戏项目内嵌+全媒体永久授权", "单一游戏项目全媒体永久授权", "全媒体永久授权",
+      "永久授权", "商业授权", "买断制", "买断",
+      "年度订阅", "年订阅", "月订阅", "按年订阅", "按月订阅", "包年", "包月", "年费", "订阅",
+      "企业版", "专业版", "旗舰版", "标准版", "基础版", "教育版", "个人版", "团队版",
+      "Enterprise", "Professional", "Business", "Premium", "Ultimate", "Standard",
+      "Education", "Individual", "Starter", "Desktop", "Studio", "Team", "Plus", "Pro",
+    ].sort((a, b) => b.length - a.length);
+    // 只放能确定的对应关系；认不出的厂商宁可留空让人填，不瞎猜
+    const SKU_VENDOR_HINTS = [
+      [/figma/i,                                   "Figma"],
+      [/cursor|anysphere/i,                        "Anysphere"],
+      [/chat\s?gpt|openai/i,                       "OpenAI"],
+      [/claude|anthropic/i,                        "Anthropic"],
+      [/adobe|photoshop|illustrator|premiere|after\s?effects|substance/i, "Adobe"],
+      [/jetbrains|intellij|pycharm|webstorm|clion|goland|rider/i,         "JetBrains"],
+      [/microsoft|office\s?365|visual\s?studio|windows/i,                 "Microsoft"],
+      [/autodesk|maya|3ds\s?max|autocad/i,         "Autodesk"],
+      [/unity/i,                                   "Unity"],
+      [/unreal|epic\s?games/i,                     "Epic Games"],
+      [/notion/i,                                  "Notion Labs"],
+      [/blender/i,                                 "Blender Foundation"],
+      [/汉仪/,                                     "汉仪字库", true],
+      [/方正/,                                     "方正字库", true],
+      [/造字工房/,                                 "造字工房", true],
+      [/文鼎/,                                     "文鼎科技", true],
+      [/蒙纳|monotype/i,                           "Monotype", true],
+    ];
+    const SKU_CORP_SUFFIX = /(Inc\.?|Ltd\.?|LLC|GmbH|Corp\.?|Technologies|公司|科技|字库|信息技术)$/i;
+    const SKU_HEADER_RE = /^(软件名称|软件|名称|版本|版本\/授权类型|授权类型|厂商|供应商|预估单价|单价|价格|币种|汇率基准国|采购方式|备注|说明|name|version|vendor|price|currency|remark)$/i;
+
+    function skuEscapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+    // ASCII 关键词加词边界，避免 "Pro" 命中 "Product"
+    function skuKeywordRe(kw) {
+      const esc = skuEscapeRe(kw);
+      return /[A-Za-z]/.test(kw) ? new RegExp(`(?<![A-Za-z])${esc}(?![A-Za-z])`, "i") : new RegExp(esc);
+    }
+
+    function skuMoney(text) {
+      for (const re of SKU_MONEY_PATTERNS) {
+        const m = text.match(re);
+        if (!m) continue;
+        const price = parseFloat(m[1].replace(/,/g, ""));
+        if (!Number.isFinite(price)) continue;
+        let currency = "";
+        for (const [cre, code] of SKU_CURRENCY_TOKENS) { if (cre.test(m[0])) { currency = code; break; } }
+        return { price, currency, raw: m[0] };
+      }
+      return { price: "", currency: "", raw: "" };
+    }
+
+    // 最多取两个版本词拼在一起（如 "Professional 年订阅"）；
+    // "Pro / Studio" 这种并列则拆成多行
+    function skuVersions(text) {
+      const hits = [];
+      let rest = text;
+      for (const kw of SKU_VERSION_KEYWORDS) {
+        if (hits.length >= 2) break;
+        const re = skuKeywordRe(kw);
+        const m = rest.match(re);
+        if (!m) continue;
+        hits.push({ text: kw, index: text.search(re) });
+        rest = rest.replace(re, " ");
+      }
+      hits.sort((a, b) => a.index - b.index);
+      const raws = hits.map((h) => h.text);
+      const pair = text.match(/([A-Za-z一-龥]+)\s*[\/／、]\s*([A-Za-z一-龥]+)/);
+      if (pair && raws.length >= 2) {
+        const canon = (s) => SKU_VERSION_KEYWORDS.find((k) => k.toLowerCase() === s.toLowerCase());
+        const a = canon(pair[1]), b = canon(pair[2]);
+        if (a && b) return { list: [a, b], raws: [pair[1], pair[2]], rest: text.replace(pair[0], " ") };
+      }
+      return { list: raws.length ? [raws.join(" ")] : [], raws, rest };
+    }
+
+    function skuVendor(text) {
+      for (const [re, vendor, isFont] of SKU_VENDOR_HINTS) {
+        if (re.test(text)) return { vendor, isFont: !!isFont };
+      }
+      const t = text.trim();
+      if (t && SKU_CORP_SUFFIX.test(t)) return { vendor: t, isFont: /字库/.test(t) };
+      return { vendor: "", isFont: false };
+    }
+
+    // 清掉分隔符和残留标点；顺带去掉与厂商完全重合的整词（去完为空则保留）
+    function skuCleanName(text, vendorName) {
+      let s = String(text || "")
+        .replace(/[，,；;|\t]+/g, " ")
+        .replace(/[（(【]\s*[)）】]/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim()
+        .replace(/^[·\-—、\/／]+|[·\-—、\/／]+$/g, "")
+        .trim();
+      if (vendorName) {
+        const re = new RegExp(`(^|\\s)${skuEscapeRe(vendorName)}(\\s|$)`, "i");
+        if (re.test(s) && s.replace(re, " ").trim()) s = s.replace(re, " ");
+      }
+      return s.replace(/\s{2,}/g, " ").trim();
+    }
+
+    // 一行 → 一条或多条建议
+    function skuParseRecord(raw) {
+      // 先抹掉千分位逗号，否则 "￥50,000" 会在按逗号分列时被拆成 "￥50" 和 "000"
+      const line = String(raw).replace(/(?<=\d),(?=\d{3}(?:\D|$))/g, "").trim();
+      if (!line) return [];
+      const fields = line.split(/\t+|[，,；;|]+/).map((f) => f.trim()).filter(Boolean);
+      if (fields.length && fields.every((f) => SKU_HEADER_RE.test(f))) return []; // 表头行
+
+      const acc = { name: "", vendor: "", price: "", currency: "", isFont: false };
+      const extras = [];
+      let versions = [];
+
+      fields.forEach((field) => {
+        const money = skuMoney(field);
+        // 整个字段就是价格（允许 "$144/人" 这类后缀）
+        const moneyOnly = money.price !== ""
+          && field.replace(money.raw, "").replace(/[\/／每人年月位seat\s]/gi, "").length === 0;
+        if (moneyOnly) {
+          if (acc.price === "") { acc.price = money.price; acc.currency = money.currency; }
+          return;
+        }
+        // 多列里的裸数字（"30"）基本就是单价
+        if (fields.length > 1 && acc.price === "" && /^\d+(\.\d+)?$/.test(field)) {
+          acc.price = parseFloat(field);
+          return;
+        }
+        let text = field;
+        if (money.price !== "") {
+          if (acc.price === "") { acc.price = money.price; acc.currency = money.currency; }
+          text = text.replace(money.raw, " ");
+        }
+        const ver = skuVersions(text);
+        const useVersion = ver.list.length && !versions.length;
+        if (useVersion) {
+          versions = ver.list;
+          text = ver.rest;
+          ver.raws.forEach((r) => { text = text.replace(r, " "); });
+        }
+
+        const vend = skuVendor(field);
+        if (vend.vendor && !acc.vendor) { acc.vendor = vend.vendor; acc.isFont = vend.isFont; }
+
+        const rest = skuCleanName(text, vend.vendor);
+        if (!rest) return;                       // 该字段只是厂商/版本/价格
+        const isVendorField = vend.vendor
+          && rest.replace(/\s/g, "").toLowerCase() === vend.vendor.replace(/\s/g, "").toLowerCase();
+        if (isVendorField && acc.name) return;   // 这一段就是厂商，别再塞进备注
+        if (!acc.name) acc.name = rest; else extras.push(rest);
+      });
+
+      // 没版本、没厂商、没价格的纯中文长句，多半是随手写的一句话而不是软件名
+      const weak = !versions.length && !acc.vendor && acc.price === "";
+      if (weak && (/[。？！]/.test(line) || (line.length >= 10 && !/[A-Za-z0-9]/.test(line)))) return [];
+
+      let name = acc.name;
+      if (name && acc.isFont && !/[【】]/.test(name)) name = `【${name}】`; // 字体按台账约定加【】
+      if (!name && !acc.vendor) return [];
+
+      return (versions.length ? versions : [""]).map((v) => ({
+        name,
+        version: v,
+        vendor: acc.vendor,
+        price: acc.price,
+        currency: acc.currency,
+        country: acc.currency ? SKU_CURRENCY_COUNTRY[acc.currency] : "",
+        note: extras.join(" "),
+      }));
+    }
+
+    function skuLocalParse(input) {
+      const out = [];
+      String(input).split(/\r?\n/).forEach((line) => { out.push(...skuParseRecord(line)); });
+      const seen = new Set();
+      return out.filter((s) => {
+        const key = `${s.name}|${s.version}|${s.vendor}`.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
     async function skuParse() {
       const input = $("skuParseInput").value.trim();
       if (!input) { showFlash("请先输入软件信息"); return; }
-      if (_skuAiDisabled) { showFlash("AI 智能填充未配置，请手工填写下方表格"); return; }
 
       const btn = $("skuParseBtn");
       const loading = $("skuParseLoading");
@@ -3793,43 +3995,65 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       btn.disabled = true;
       btn.textContent = "识别中…";
       loading.classList.add("show");
-      skuSetStatus("⏳ AI 正在识别，通常需要 3~8 秒…", "");
+      skuSetStatus(_skuAiDisabled ? "⏳ 本地解析中…" : "⏳ AI 正在识别，通常需要 3~8 秒…", "");
+
+      let suggestions = [];
+      let aiError = "";
+      try {
+        // AI 可用就先走 AI；不可用（如后端缺 ANTHROPIC_API_KEY）直接走本地规则
+        if (!_skuAiDisabled) {
+          const resp = await apiFetch("/api/sku/lookup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ input }),
+          });
+          const result = await resp.json().catch(() => ({}));
+          if (!resp.ok || result.ok === false) {
+            throw new Error(result.error || result.message || `服务器返回 ${resp.status}`);
+          }
+          const raw = result.suggestions || result.items || result.data || [];
+          suggestions = (Array.isArray(raw) ? raw : []).map(skuNormalizeSuggestion).filter(Boolean);
+        }
+      } catch (e) {
+        aiError = e.message;
+        if (skuIsAiUnconfigured(aiError) || /50\d/.test(aiError)) _skuAiDisabled = true;
+      }
+
+      const usedLocal = !suggestions.length;
+      if (usedLocal) suggestions = skuLocalParse(input);
 
       try {
-        const resp = await apiFetch("/api/sku/lookup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ input }),
-        });
-        const result = await resp.json().catch(() => ({}));
-        if (!resp.ok || result.ok === false) {
-          throw new Error(result.error || result.message || `服务器返回 ${resp.status}，请确认后端正在运行`);
-        }
-
-        const raw = result.suggestions || result.items || result.data || [];
-        const suggestions = (Array.isArray(raw) ? raw : []).map(skuNormalizeSuggestion).filter(Boolean);
         if (!suggestions.length) {
-          skuSetStatus("⚠️ 未识别到软件信息，请补充描述后重试", "error");
+          skuSetStatus(aiError
+            ? `❌ AI 不可用（${aiError}），本地规则也没能从这段文字里认出软件，请手工填写下方表格`
+            : "⚠️ 未识别到软件信息，请补充描述后重试", "error");
           return;
         }
 
-        skuHideAiNotice();
         // 如果表格只有空行，清空后填入；否则追加
         if (skuCollect().every((e) => skuRowIsEmpty(e.data))) $("skuTableBody").innerHTML = "";
         suggestions.forEach((s) => skuAddRow(s, true));
-        skuSetStatus(`✅ 已识别 ${suggestions.length} 款软件，高亮行为推荐值，可逐行修改`, "ok");
+
+        if (usedLocal) {
+          const missing = suggestions.some((s) => !s.vendor || !s.price);
+          skuSetStatus(
+            `✅ 本地规则已解析 ${suggestions.length} 行${missing ? "，厂商/单价没认出来的请手工补齐" : "，请核对高亮行"}`,
+            "ok");
+          if (aiError) {
+            skuShowAiNotice(
+              skuIsAiUnconfigured(aiError)
+                ? `AI 智能填充未配置：${aiError}`
+                : `AI 智能填充暂不可用：${aiError}`,
+              "info");
+          }
+        } else {
+          skuHideAiNotice();
+          skuSetStatus(`✅ 已识别 ${suggestions.length} 款软件，高亮行为推荐值，可逐行修改`, "ok");
+        }
         $("skuParseInput").value = "";
         $("skuTableBody").closest(".sku-table-wrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
-      } catch (e) {
-        if (skuIsAiUnconfigured(e.message)) {
-          _skuAiDisabled = true;
-          skuShowAiNotice(`AI 智能填充未配置：${e.message}`);
-        } else {
-          skuSetStatus("❌ " + e.message, "error");
-          showFlash("识别失败：" + e.message);
-        }
       } finally {
-        btn.disabled = _skuAiDisabled;
+        btn.disabled = false;
         btn.textContent = "识别并填入表格";
         loading.classList.remove("show");
       }
