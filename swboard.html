@@ -1398,6 +1398,33 @@
       max-width: 120px;
     }
 
+    .sku-ai-notice {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--red-mid);
+      border-radius: 8px;
+      background: var(--red-light);
+      color: var(--red);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .sku-ai-notice[hidden] { display: none; }
+    .sku-ai-retry {
+      margin-left: 6px;
+      padding: 2px 10px;
+      border: 1px solid var(--red);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--red);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .sku-ai-retry:hover { background: var(--red); color: #fff; }
+    .sku-table td input.sku-invalid, .sku-table td select.sku-invalid {
+      border-color: var(--red);
+      background: var(--red-light);
+    }
+    .sku-preset-btn.active { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
     .sku-parse-loading { display: none; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
     .sku-parse-loading.show { display: flex; }
     .sku-spin {
@@ -1713,6 +1740,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
             </div>
             <button class="btn btn-primary" id="skuParseBtn">识别并填入表格</button>
           </div>
+          <div class="sku-ai-notice" id="skuAiNotice" hidden></div>
           <div id="skuParseStatus" style="margin-top:8px;font-size:13px;min-height:18px;color:var(--text-3);"></div>
         </div>
 
@@ -1750,13 +1778,14 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
                 <th class="required" style="min-width:110px">预估单价</th>
                 <th style="min-width:80px">币种</th>
                 <th style="min-width:80px">汇率基准国</th>
-                <th style="min-width:120px;max-width:140px">说明</th>
+                <th style="min-width:120px;max-width:140px">备注</th>
                 <th style="width:36px"></th>
               </tr>
             </thead>
             <tbody id="skuTableBody">
             </tbody>
           </table>
+          <datalist id="skuVersionOptions"></datalist>
         </div>
 
         <!-- 生成结果 -->
@@ -2134,7 +2163,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
     async function loadSnapshotSafe() {
       // 优先走后端 /api/pending（带缓存），降级到 localStorage
       try {
-        const resp = await fetch(PROXY_BASE + "/api/pending");
+        const resp = await apiFetch("/api/pending");
         if (resp.ok) {
           const result = await resp.json();
           if (result.ok && Array.isArray(result.items)) {
@@ -2688,7 +2717,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
 
     async function saveLabelToBackend(reqCode, label, note, skuName) {
       try {
-        await fetch(PROXY_BASE + "/api/label", {
+        await apiFetch("/api/label", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ req_code: reqCode, label, note, sku_name: skuName }),
@@ -2709,7 +2738,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       const trimmed = prCode.trim();
       showFlash(`正在标记缺货 ${reqCode} → ${trimmed}…`);
       try {
-        const resp = await fetch(PROXY_BASE + "/api/mark_pr", {
+        const resp = await apiFetch("/api/mark_pr", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ req_code: reqCode, pr_code: trimmed }),
@@ -2800,7 +2829,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         _previewPayload = null;
 
         try {
-          const resp = await fetch(PROXY_BASE + "/api/deliver/preview", {
+          const resp = await apiFetch("/api/deliver/preview", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ pr_code: prCode, delivery_date: date, account }),
@@ -2846,7 +2875,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
         btn.disabled = true;
         btn.textContent = "发放中…";
         try {
-          const resp = await fetch(PROXY_BASE + "/api/deliver/run", {
+          const resp = await apiFetch("/api/deliver/run", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(_previewPayload),
@@ -3001,7 +3030,49 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
     }
 
     // ── 代理直连拉取真实数据 ──────────────────────────────────────
-    const PROXY_BASE = "http://127.0.0.1:9003";
+    const DEFAULT_PROXY_BASE = "http://127.0.0.1:9003";
+
+    // 后端地址：页面由后端自身托管时（如 http://localhost:9004/board）走同源，
+    // 避免端口写死成 9003 后所有 /api/* 请求都打到不存在的服务上。
+    function resolveApiBase() {
+      try {
+        const override = new URLSearchParams(location.search).get("api");
+        if (override) localStorage.setItem("samApiBase", override);
+        else if (override === "") localStorage.removeItem("samApiBase"); // ?api= 清除覆盖
+        const saved = localStorage.getItem("samApiBase");
+        if (saved) return saved.replace(/\/+$/, "");
+      } catch (e) { /* localStorage 不可用时忽略 */ }
+      if (location.protocol === "http:" || location.protocol === "https:") return location.origin;
+      return DEFAULT_PROXY_BASE; // file:// 直接打开时回落到默认代理端口
+    }
+
+    let _apiBase = resolveApiBase();
+    let _apiBaseConfirmed = false;
+
+    // 首个请求成功前，同源之外再兜底试一次默认代理端口；确认可用后就固定下来，
+    // 避免对 /api/deliver/run 这类写接口重复投递。
+    async function apiFetch(path, options) {
+      const candidates = _apiBaseConfirmed
+        ? [_apiBase]
+        : [...new Set([_apiBase, DEFAULT_PROXY_BASE])];
+      let lastError = null;
+      for (let i = 0; i < candidates.length; i++) {
+        const base = candidates[i];
+        const isLast = i === candidates.length - 1;
+        try {
+          const resp = await fetch(base + path, options);
+          // 同源可能只是个静态服务器、没有 API 路由，404 时再试下一个候选
+          if (resp.status === 404 && !isLast) { lastError = new Error(`HTTP 404 @ ${base}`); continue; }
+          _apiBase = base;
+          _apiBaseConfirmed = true;
+          return resp;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      throw new Error(`无法连接后端服务（已尝试 ${candidates.join("、")}）：${(lastError && lastError.message) || "网络错误"}`);
+    }
+
     const SAM_DELIVER_PATH = "/neone-sam-svc/v1/deliver/page";
 
     function setFetchStatus(msg, isError) {
@@ -3012,7 +3083,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
     }
 
     async function proxyFetchPage(pageNum, pageSize) {
-      const resp = await fetch(PROXY_BASE + SAM_DELIVER_PATH, {
+      const resp = await apiFetch(SAM_DELIVER_PATH, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3052,7 +3123,7 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       try {
         // 走后端 /api/refresh（带缓存 + 全量分页，后端处理）
         setFetchStatus("正在从后端拉取全量数据…");
-        const resp = await fetch(PROXY_BASE + "/api/refresh", { method: "POST" });
+        const resp = await apiFetch("/api/refresh", { method: "POST" });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const result = await resp.json();
         if (!result.ok) throw new Error(result.error || "后端返回错误");
@@ -3507,10 +3578,14 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
     // ══════════════════════════════════════════════════════════════
     // SKU 创建板块
     // ══════════════════════════════════════════════════════════════
-    const SKU_VERSIONS_DOMESTIC = [
+    const SKU_VERSION_OPTIONS = [
       "单一游戏项目全媒体永久授权",
       "单一游戏项目内嵌+全媒体永久授权",
+      "年度订阅",
+      "Desktop",
     ];
+    // 币种 → 汇率基准国（同时决定两个下拉框的选项）
+    const SKU_CURRENCY_COUNTRY = { CNY: "中国", USD: "美国", EUR: "欧元区" };
     const SKU_PRESETS = {
       domestic: { version: "单一游戏项目全媒体永久授权", currency: "CNY", country: "中国" },
       overseas: { version: "Desktop",                    currency: "USD", country: "美国" },
@@ -3519,48 +3594,81 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
 
     let _skuPreset = SKU_PRESETS.domestic; // 默认国内字体
     let _skuFilename = "";                 // 生成后的文件名
+    let _skuAiDisabled = false;            // 后端未配置 AI 时禁用智能填充
+
+    function skuSetStatus(message, tone) {
+      const el = $("skuParseStatus");
+      if (!el) return;
+      el.textContent = message || "";
+      el.style.color = tone === "error" ? "var(--red)"
+        : tone === "ok" ? "var(--green)"
+        : "var(--text-2)";
+    }
+
+    // 后端缺 ANTHROPIC_API_KEY / 未接 AI 时：常驻提示，且不影响手工填写
+    function skuShowAiNotice(message) {
+      const el = $("skuAiNotice");
+      if (!el) return;
+      el.innerHTML = `${escapeHtml(message)}<br>下方表格可以照常手工填写、生成并下载 Excel，不受影响。`
+        + ` <button type="button" class="sku-ai-retry" id="skuAiRetry">配置好了，重试</button>`;
+      el.hidden = false;
+      $("skuAiRetry").addEventListener("click", () => {
+        _skuAiDisabled = false;
+        skuHideAiNotice();
+        $("skuParseBtn").disabled = false;
+        if ($("skuParseInput").value.trim()) skuParse();
+      });
+      skuSetStatus("", "");
+    }
+
+    function skuHideAiNotice() {
+      const el = $("skuAiNotice");
+      if (el) { el.hidden = true; el.textContent = ""; }
+    }
+
+    function skuIsAiUnconfigured(message) {
+      return /ANTHROPIC_API_KEY|api[_\s-]?key|未配置|not configured/i.test(String(message || ""));
+    }
 
     function skuMakeRow(defaults = {}, suggested = false) {
       const tr = document.createElement("tr");
       tr.dataset.skuRow = "1";
       if (suggested) tr.classList.add("suggested");
-      const v   = defaults.version  || _skuPreset.version;
-      const c   = defaults.currency || _skuPreset.currency;
-      const cty = defaults.country  || _skuPreset.country;
-      const note = defaults.note || "";
-      // 安全 escape
-      const esc = s => String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+
+      const version  = defaults.version  || _skuPreset.version;
+      const currency = SKU_CURRENCY_COUNTRY[defaults.currency] ? defaults.currency : _skuPreset.currency;
+      const country  = defaults.country  || SKU_CURRENCY_COUNTRY[currency] || _skuPreset.country;
+      const note     = defaults.note || "";
+      const price    = (defaults.price === 0 || defaults.price) ? defaults.price : "";
+      const options  = (list, selected) => list
+        .map((o) => `<option value="${escapeHtml(o)}"${o === selected ? " selected" : ""}>${escapeHtml(o)}</option>`)
+        .join("");
+
       tr.innerHTML = `
-        <td><input type="text" class="sku-name"    placeholder="【软件名称】"  value="${esc(defaults.name||'')}"></td>
-        <td><input type="text" class="sku-version" placeholder="版本/授权类型" value="${esc(v)}"></td>
-        <td><input type="text" class="sku-vendor"  placeholder="厂商名称"      value="${esc(defaults.vendor||'')}"></td>
-        <td><input type="number" class="sku-price" placeholder="0" min="0" step="0.01" value="${esc(defaults.price||'')}"></td>
-        <td>
-          <select class="sku-currency">
-            <option value="CNY" ${c==='CNY'?'selected':''}>CNY</option>
-            <option value="USD" ${c==='USD'?'selected':''}>USD</option>
-            <option value="EUR" ${c==='EUR'?'selected':''}>EUR</option>
-          </select>
-        </td>
-        <td>
-          <select class="sku-country">
-            <option value="中国" ${cty==='中国'?'selected':''}>中国</option>
-            <option value="美国" ${cty==='美国'?'selected':''}>美国</option>
-            <option value="欧元区" ${cty==='欧元区'?'selected':''}>欧元区</option>
-          </select>
-        </td>
-        <td><input type="text" class="sku-note sku-suggest-note" placeholder="说明" title="${esc(note)}" value="${esc(note)}" style="min-width:90px"></td>
-        <td class="sku-del-col"><button class="sku-del-btn" title="删除">✕</button></td>`;
-      // 币种联动汇率基准国
-      tr.querySelector(".sku-currency").addEventListener("change", e => {
-        const ct = tr.querySelector(".sku-country");
-        const map = { CNY: "中国", USD: "美国", EUR: "欧元区" };
-        ct.value = map[e.target.value] || "中国";
+        <td><input type="text" class="sku-name"    placeholder="软件名称（字体加【】）" value="${escapeHtml(defaults.name || "")}"></td>
+        <td><input type="text" class="sku-version" list="skuVersionOptions" placeholder="版本/授权类型" value="${escapeHtml(version)}"></td>
+        <td><input type="text" class="sku-vendor"  placeholder="厂商名称" value="${escapeHtml(defaults.vendor || "")}"></td>
+        <td><input type="number" class="sku-price" placeholder="0" min="0" step="0.01" value="${escapeHtml(price)}"></td>
+        <td><select class="sku-currency">${options(Object.keys(SKU_CURRENCY_COUNTRY), currency)}</select></td>
+        <td><select class="sku-country">${options(Object.values(SKU_CURRENCY_COUNTRY), country)}</select></td>
+        <td><input type="text" class="sku-note sku-suggest-note" placeholder="备注 / 官网链接（可选）" title="${escapeHtml(note)}" value="${escapeHtml(note)}" style="min-width:90px"></td>
+        <td class="sku-del-col"><button type="button" class="sku-del-btn" title="删除">✕</button></td>`;
+
+      const countrySel = tr.querySelector(".sku-country");
+      // 币种联动汇率基准国（用户手动改过基准国后不再自动覆盖）
+      countrySel.addEventListener("change", () => { countrySel.dataset.touched = "1"; });
+      tr.querySelector(".sku-currency").addEventListener("change", (e) => {
+        if (countrySel.dataset.touched === "1") return;
+        countrySel.value = SKU_CURRENCY_COUNTRY[e.target.value] || "中国";
       });
-      // 任意字段修改后去掉 suggested 高亮
-      tr.querySelectorAll("input,select").forEach(el => {
-        el.addEventListener("input", () => tr.classList.remove("suggested"));
-        el.addEventListener("change", () => tr.classList.remove("suggested"));
+      // 备注较长时用 title 兜底展示
+      const noteInput = tr.querySelector(".sku-note");
+      noteInput.addEventListener("input", () => { noteInput.title = noteInput.value; });
+      // 任意字段修改后去掉 suggested 高亮与校验红框
+      tr.querySelectorAll("input,select").forEach((el) => {
+        const clear = () => { tr.classList.remove("suggested"); el.classList.remove("sku-invalid"); };
+        el.addEventListener("input", clear);
+        el.addEventListener("change", clear);
       });
       tr.querySelector(".sku-del-btn").addEventListener("click", () => {
         tr.remove();
@@ -3573,37 +3681,54 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       $("skuTableBody").appendChild(skuMakeRow(defaults, suggested));
     }
 
-    function skuGetRows() {
-      return [...$("skuTableBody").querySelectorAll("tr[data-sku-row]")].map(tr => ({
-        name:    tr.querySelector(".sku-name").value.trim(),
-        version: tr.querySelector(".sku-version").value.trim(),
-        vendor:  tr.querySelector(".sku-vendor").value.trim(),
-        price:   parseFloat(tr.querySelector(".sku-price").value) || 0,
-        currency: tr.querySelector(".sku-currency").value,
-        country:  tr.querySelector(".sku-country").value,
+    // 返回 { data, tr }，校验时可定位到具体行
+    function skuCollect() {
+      return [...$("skuTableBody").querySelectorAll("tr[data-sku-row]")].map((tr) => ({
+        tr,
+        data: {
+          name:     tr.querySelector(".sku-name").value.trim(),
+          version:  tr.querySelector(".sku-version").value.trim(),
+          vendor:   tr.querySelector(".sku-vendor").value.trim(),
+          price:    parseFloat(tr.querySelector(".sku-price").value) || 0,
+          currency: tr.querySelector(".sku-currency").value,
+          country:  tr.querySelector(".sku-country").value,
+          note:     tr.querySelector(".sku-note").value.trim(),
+        },
       }));
     }
 
-    function skuValidate(rows) {
+    function skuRowIsEmpty(d) {
+      return !d.name && !d.vendor && !d.price && !d.note;
+    }
+
+    // 返回 [{ message, tr, field }]
+    function skuValidate(entries) {
       const errs = [];
-      rows.forEach((r, i) => {
-        if (!r.name)    errs.push(`第${i+1}行：软件名称不能为空`);
-        if (!r.version) errs.push(`第${i+1}行：版本/授权类型不能为空`);
-        if (!r.vendor)  errs.push(`第${i+1}行：厂商不能为空`);
-        if (!r.price || r.price <= 0) errs.push(`第${i+1}行：预估单价必须大于 0`);
+      entries.forEach(({ data, tr }, i) => {
+        const bad = (field, message) => errs.push({ message: `第${i + 1}行：${message}`, tr, field });
+        if (!data.name)    bad(".sku-name",    "软件名称不能为空");
+        if (!data.version) bad(".sku-version", "版本/授权类型不能为空");
+        if (!data.vendor)  bad(".sku-vendor",  "厂商不能为空");
+        if (!data.price || data.price <= 0) bad(".sku-price", "预估单价必须大于 0");
       });
       return errs;
     }
 
+    function skuMarkErrors(errs) {
+      $("skuTableBody").querySelectorAll(".sku-invalid").forEach((el) => el.classList.remove("sku-invalid"));
+      errs.forEach(({ tr, field }) => tr.querySelector(field)?.classList.add("sku-invalid"));
+      const first = errs[0] && errs[0].tr.querySelector(errs[0].field);
+      if (first) { first.focus(); first.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+    }
+
     // 预设按钮点击 → 更新全局预设 + 刷新现有行默认值（不覆盖已填内容）
-    document.querySelectorAll(".sku-preset-btn").forEach(btn => {
+    document.querySelectorAll(".sku-preset-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".sku-preset-btn").forEach(b => b.style.borderColor = "");
-        btn.style.borderColor = "var(--primary)";
+        document.querySelectorAll(".sku-preset-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
         _skuPreset = SKU_PRESETS[btn.dataset.preset] || SKU_PRESETS.domestic;
-        const rows = skuGetRows();
-        const allEmpty = rows.every(r => !r.name && !r.vendor && !r.price);
-        if (allEmpty) {
+        const entries = skuCollect();
+        if (entries.every((e) => skuRowIsEmpty(e.data))) {
           $("skuTableBody").innerHTML = "";
           skuAddRow();
         }
@@ -3617,91 +3742,144 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
       $("skuTableBody").innerHTML = "";
       skuAddRow();
       $("skuResult").classList.remove("show");
+      _skuFilename = "";
+      skuSetStatus("", "");
     });
 
     // ── 智能填充 ────────────────────────────────────────────────────────
-    $("skuParseBtn").addEventListener("click", async () => {
+    // 后端返回字段名可能不同，这里做一次兼容归一
+    const SKU_FIELD_ALIASES = {
+      name:     ["name", "sku_name", "software", "software_name", "软件名称"],
+      version:  ["version", "sw_version", "license", "license_type", "版本", "授权类型"],
+      vendor:   ["vendor", "manufacturer", "supplier", "厂商"],
+      price:    ["price", "unit_price", "estimate_price", "estimated_price", "预估单价"],
+      currency: ["currency", "币种"],
+      country:  ["country", "exchange_country", "汇率基准国"],
+      note:     ["note", "remark", "comment", "url", "official_url", "备注", "说明"],
+    };
+
+    function skuNormalizeSuggestion(raw) {
+      if (!raw || typeof raw !== "object") return null;
+      const pick = (keys) => {
+        for (const key of keys) {
+          const v = raw[key];
+          if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+        }
+        return "";
+      };
+      const currency = pick(SKU_FIELD_ALIASES.currency).toUpperCase();
+      const price = parseFloat(pick(SKU_FIELD_ALIASES.price).replace(/[^\d.]/g, ""));
+      const item = {
+        name:     pick(SKU_FIELD_ALIASES.name),
+        version:  pick(SKU_FIELD_ALIASES.version),
+        vendor:   pick(SKU_FIELD_ALIASES.vendor),
+        price:    Number.isFinite(price) ? price : "",
+        currency: SKU_CURRENCY_COUNTRY[currency] ? currency : "",
+        country:  pick(SKU_FIELD_ALIASES.country),
+        note:     pick(SKU_FIELD_ALIASES.note),
+      };
+      if (item.currency && !item.country) item.country = SKU_CURRENCY_COUNTRY[item.currency];
+      return (item.name || item.vendor) ? item : null;
+    }
+
+    async function skuParse() {
       const input = $("skuParseInput").value.trim();
       if (!input) { showFlash("请先输入软件信息"); return; }
+      if (_skuAiDisabled) { showFlash("AI 智能填充未配置，请手工填写下方表格"); return; }
 
       const btn = $("skuParseBtn");
       const loading = $("skuParseLoading");
-      const statusEl = $("skuParseStatus");
 
       btn.disabled = true;
       btn.textContent = "识别中…";
       loading.classList.add("show");
-      if (statusEl) { statusEl.textContent = "⏳ AI 正在识别，通常需要 3~8 秒…"; statusEl.style.color = "var(--text-2)"; }
+      skuSetStatus("⏳ AI 正在识别，通常需要 3~8 秒…", "");
 
       try {
-        const resp = await fetch(PROXY_BASE + "/api/sku/lookup", {
+        const resp = await apiFetch("/api/sku/lookup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ input }),
         });
-        if (!resp.ok) throw new Error(`服务器返回 ${resp.status}，请确认后端正在运行`);
-        const result = await resp.json();
-        if (!result.ok) throw new Error(result.error || "识别失败");
+        const result = await resp.json().catch(() => ({}));
+        if (!resp.ok || result.ok === false) {
+          throw new Error(result.error || result.message || `服务器返回 ${resp.status}，请确认后端正在运行`);
+        }
 
-        const suggestions = result.suggestions || [];
+        const raw = result.suggestions || result.items || result.data || [];
+        const suggestions = (Array.isArray(raw) ? raw : []).map(skuNormalizeSuggestion).filter(Boolean);
         if (!suggestions.length) {
-          if (statusEl) { statusEl.textContent = "⚠️ 未识别到软件信息，请补充描述后重试"; statusEl.style.color = "var(--danger)"; }
+          skuSetStatus("⚠️ 未识别到软件信息，请补充描述后重试", "error");
           return;
         }
 
-        // 如果表格只有一行空行，清空后填入；否则追加
-        const existRows = skuGetRows();
-        const hasContent = existRows.some(r => r.name || r.vendor || r.price);
-        if (!hasContent) $("skuTableBody").innerHTML = "";
-
-        suggestions.forEach(s => skuAddRow(s, true));
-        if (statusEl) { statusEl.textContent = `✅ 已识别 ${suggestions.length} 款软件，高亮行为推荐值，可逐行修改`; statusEl.style.color = "var(--success)"; }
-        // 清空输入框
+        skuHideAiNotice();
+        // 如果表格只有空行，清空后填入；否则追加
+        if (skuCollect().every((e) => skuRowIsEmpty(e.data))) $("skuTableBody").innerHTML = "";
+        suggestions.forEach((s) => skuAddRow(s, true));
+        skuSetStatus(`✅ 已识别 ${suggestions.length} 款软件，高亮行为推荐值，可逐行修改`, "ok");
         $("skuParseInput").value = "";
-        // 滚动到表格
         $("skuTableBody").closest(".sku-table-wrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
-      } catch(e) {
-        if (statusEl) { statusEl.textContent = "❌ " + e.message; statusEl.style.color = "var(--danger)"; }
-        showFlash("识别失败：" + e.message, true);
+      } catch (e) {
+        if (skuIsAiUnconfigured(e.message)) {
+          _skuAiDisabled = true;
+          skuShowAiNotice(`AI 智能填充未配置：${e.message}`);
+        } else {
+          skuSetStatus("❌ " + e.message, "error");
+          showFlash("识别失败：" + e.message);
+        }
       } finally {
-        btn.disabled = false;
+        btn.disabled = _skuAiDisabled;
         btn.textContent = "识别并填入表格";
         loading.classList.remove("show");
       }
+    }
+
+    $("skuParseBtn").addEventListener("click", skuParse);
+    // Ctrl/⌘ + Enter 直接识别
+    $("skuParseInput").addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); skuParse(); }
     });
 
     // ── 生成 Excel ───────────────────────────────────────────────────────
     $("skuGenerate").addEventListener("click", async () => {
-      const rows = skuGetRows().filter(r => r.name || r.vendor || r.price);
-      if (!rows.length) { showFlash("请至少填写一行 SKU 信息"); return; }
-      const errs = skuValidate(rows);
-      if (errs.length) { showFlash(errs[0]); return; }
+      const entries = skuCollect().filter((e) => !skuRowIsEmpty(e.data));
+      if (!entries.length) { showFlash("请至少填写一行 SKU 信息"); return; }
+      const errs = skuValidate(entries);
+      if (errs.length) {
+        skuMarkErrors(errs);
+        showFlash(errs.length > 1 ? `${errs[0].message}（共 ${errs.length} 处待修正）` : errs[0].message);
+        return;
+      }
+      $("skuTableBody").querySelectorAll(".sku-invalid").forEach((el) => el.classList.remove("sku-invalid"));
 
+      const rows = entries.map((e) => e.data);
       const btn = $("skuGenerate");
       btn.disabled = true;
       btn.textContent = "生成中…";
       try {
-        const resp = await fetch(PROXY_BASE + "/api/sku/generate", {
+        const resp = await apiFetch("/api/sku/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ items: rows }),
         });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const result = await resp.json();
-        if (!result.ok) throw new Error(result.error || "生成失败");
+        const result = await resp.json().catch(() => ({}));
+        if (!resp.ok || result.ok === false) {
+          throw new Error(result.error || result.message || `HTTP ${resp.status}`);
+        }
+        _skuFilename = result.filename || result.file || "";
+        if (!_skuFilename) throw new Error("后端未返回文件名");
 
-        _skuFilename = result.filename;
-
-        const ul = $("skuResultList");
-        ul.innerHTML = rows.map(r =>
-          `<li>${r.name} · ${r.version} · ${r.vendor} · ${r.currency} ${r.price.toLocaleString()}</li>`
+        $("skuResultList").innerHTML = rows.map((r) =>
+          `<li>${escapeHtml(r.name)} · ${escapeHtml(r.version)} · ${escapeHtml(r.vendor)} · ${escapeHtml(r.currency)} ${escapeHtml(r.price.toLocaleString())}</li>`
         ).join("");
         $("skuResult").classList.add("show");
-        // 去除高亮
-        $("skuTableBody").querySelectorAll("tr.suggested").forEach(tr => tr.classList.remove("suggested"));
+        $("skuUploadStatus").textContent = "";
+        $("skuTableBody").querySelectorAll("tr.suggested").forEach((tr) => tr.classList.remove("suggested"));
+        $("skuResult").scrollIntoView({ behavior: "smooth", block: "nearest" });
         showFlash(`✅ 已生成 ${rows.length} 条 SKU`);
-      } catch(e) {
-        showFlash("生成失败：" + e.message, true);
+      } catch (e) {
+        showFlash("生成失败：" + e.message);
       } finally {
         btn.disabled = false;
         btn.textContent = "生成 Excel";
@@ -3709,22 +3887,38 @@ Cursor Enterprise，Anysphere，按席位年费"></textarea>
     });
 
     $("skuDownload").addEventListener("click", async () => {
-      if (!_skuFilename) return;
+      if (!_skuFilename) { showFlash("请先生成 Excel"); return; }
       try {
-        const resp = await fetch(PROXY_BASE + "/api/sku/download/" + encodeURIComponent(_skuFilename));
-        if (!resp.ok) throw new Error("下载失败");
+        const resp = await apiFetch("/api/sku/download/" + encodeURIComponent(_skuFilename));
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        // 后端出错时会返回 JSON 而不是 xlsx，避免下载到一个坏文件
+        const type = resp.headers.get("Content-Type") || "";
+        if (type.includes("application/json")) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error || err.message || "后端未生成文件");
+        }
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url; a.download = _skuFilename;
-        a.click(); URL.revokeObjectURL(url);
-      } catch(e) { showFlash("下载失败：" + e.message, true); }
+        a.href = url;
+        a.download = _skuFilename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) { showFlash("下载失败：" + e.message); }
     });
 
     $("skuUploadFms").addEventListener("click", () => {
       window.open("https://fms.mihoyo.com/fms-cc/configs/common/sku_software/update", "_blank");
       $("skuUploadStatus").textContent = "💡 已打开 FMS 导入页，请点击「导入更新」上传下载好的 Excel 文件。";
     });
+
+    // 版本/授权类型候选项
+    (() => {
+      const dl = $("skuVersionOptions");
+      if (dl) dl.innerHTML = SKU_VERSION_OPTIONS.map((v) => `<option value="${escapeHtml(v)}"></option>`).join("");
+    })();
 
     // 初始化一行空行
     skuAddRow();
