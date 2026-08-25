@@ -319,7 +319,7 @@ def _selftest() -> None:
     import shutil
     import tempfile
 
-    AES_KEY = "3B9eqlwJdU9ear8fQ53j5GZ"          # 长度与真实 key 一致，值是占位
+    AES_KEY = "test-aes-key-000000000"           # 纯测试值，与任何真实 key 无关
     VERIFY_TOKEN = "verify-token-for-test"
 
     def check(label, got, want=True):
