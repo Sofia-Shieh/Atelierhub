@@ -9,9 +9,8 @@ invoice_collect.py —— 票据（发票）收集闭环
       → 超时未回传的自动催办
 
 设计要点：
-  * 聊天渠道被隔离在 ChatChannel 适配器里。hoyowave 的接口我拿不到文档，
-    HoyowaveChannel 里三个方法标了 TODO，填上就能上线；在那之前用
-    MockChannel 可以把整条链路完整跑通（见文件末尾的自测）。
+  * 聊天渠道被隔离在 ChatChannel 适配器里：HoyowaveChannel 按 HoyoWave 开放平台
+    文档实现（发消息 / 换 token / 取文件直链），MockChannel 供本地跑通与测试。
   * 只用标准库（sqlite3 / urllib / hashlib），不引入任何依赖，
     可以直接丢进现有后端目录 import 使用。
   * 所有状态落在 SQLite，重启不丢；回调按 event_id 去重，重复推送不会重复归档。
@@ -27,6 +26,7 @@ import re
 import sqlite3
 import secrets
 import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
@@ -115,62 +115,165 @@ class MockChannel:
 
 class HoyowaveChannel:
     """
-    hoyowave 渠道实现。
+    HoyoWave（内部聊天软件）渠道实现，按开放平台文档对接：
 
-    ⚠️ 下面三处 TODO 是我拿不到的信息（内部系统，无公开文档）：
-       1. 发消息的 URL 和请求体字段
-       2. 鉴权方式（是 app_id/app_secret 换 token，还是固定 token / 签名）
-       3. 回调里文件字段叫什么、怎么按引用把文件下载下来
+        发消息   POST {base}/openapi/im/v1/message/send
+        取文件   POST {base}/openapi/file/v1/public_url/get  → 拿到 5 分钟有效的直链再 GET
+        鉴权     app_id + app_secret 换 access_token，请求头 Authorization: Bearer {token}
 
-    填这三处即可上线，其余流程（匹配单号、归档、回执、催办、去重）都不用动。
+    access_token 怎么拿，按下面顺序取第一个可用的：
+      1. 显式传入的 token / HOYOWAVE_TOKEN（自测或临时调试用）
+      2. 传入的 SDK 实例 sdk_app（即 Application.builder(...).build()），
+         由 SDK 自己管理缓存与续期 —— 有 SDK 时这条最省事
+      3. 直接 HTTP 换取：POST {base}{token_path}，本类内部缓存并提前 60 秒续期
+         token 接口路径若未在 HOYOWAVE_TOKEN_URL 指定，会在几个常见路径里探测一次
     """
+
+    #: 未显式配置时，依次探测这些换 token 的路径
+    TOKEN_PATH_CANDIDATES = (
+        "/openapi/auth/v1/access_token",
+        "/openapi/auth/v1/app_access_token",
+        "/openapi/auth/v3/app_access_token/internal",
+        "/openapi/auth/v1/token",
+    )
+    SEND_PATH = "/openapi/im/v1/message/send"
+    FILE_URL_PATH = "/openapi/file/v1/public_url/get"
 
     def __init__(self,
                  base_url: str = None,
                  app_id: str = None,
                  app_secret: str = None,
                  token: str = None,
+                 receiver_id_type: str = None,
+                 send_type: str = None,
+                 token_path: str = None,
+                 sdk_app: Any = None,
                  timeout: int = 15):
-        self.base_url = (base_url or os.environ.get("HOYOWAVE_BASE_URL", "")).rstrip("/")
+        self.base_url = (base_url or os.environ.get("HOYOWAVE_BASE_URL",
+                                                    "https://open.hoyowave.com")).rstrip("/")
         self.app_id = app_id or os.environ.get("HOYOWAVE_APP_ID", "")
         self.app_secret = app_secret or os.environ.get("HOYOWAVE_APP_SECRET", "")
-        self._token = token or os.environ.get("HOYOWAVE_TOKEN", "")
+        self.receiver_id_type = receiver_id_type or os.environ.get("HOYOWAVE_RECEIVER_ID_TYPE", "user_id")
+        self.send_type = send_type or os.environ.get("HOYOWAVE_SEND_TYPE", "app")
         self.timeout = timeout
-        if not self.base_url:
-            raise RuntimeError("未配置 HOYOWAVE_BASE_URL，请在 .env 里补上，或先用 MockChannel")
+        self.sdk_app = sdk_app
+        self._token_path = token_path or os.environ.get("HOYOWAVE_TOKEN_URL", "") or None
+        self._static_token = token or os.environ.get("HOYOWAVE_TOKEN", "")
+        self._token_value = ""
+        self._token_expire_at = 0.0
+        if not self._static_token and not self.sdk_app and not (self.app_id and self.app_secret):
+            raise RuntimeError(
+                "HoyoWave 未配置：请在 .env 里给 HOYOWAVE_APP_ID / HOYOWAVE_APP_SECRET，"
+                "或传入 sdk_app / token；调试阶段也可以先用 MockChannel。")
 
-    # -- 内部：带鉴权的 HTTP --------------------------------------------
-    def _request(self, path: str, payload: dict = None, method: str = "POST") -> dict:
-        url = self.base_url + path
-        data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    # -- HTTP ----------------------------------------------------------
+    def _http(self, url: str, payload: dict = None, token: str = None,
+              method: str = "POST", raw: bool = False):
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
         req = urllib.request.Request(url, data=data, method=method)
-        req.add_header("Content-Type", "application/json")
-        if self._token:
-            # TODO(hoyowave-2)：确认鉴权头。可能是 Authorization: Bearer，
-            # 也可能是 X-Access-Token / 签名（app_id + timestamp + nonce + sign）。
-            req.add_header("Authorization", f"Bearer {self._token}")
+        if data is not None:
+            req.add_header("Content-Type", "application/json")
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
         with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            if raw:
+                return resp.headers.get_filename(), resp.read()
             body = resp.read().decode("utf-8")
         return json.loads(body) if body else {}
 
+    @staticmethod
+    def _dig(obj: dict, *paths, default=None):
+        for path in paths:
+            cur: Any = obj
+            for part in path.split("."):
+                if isinstance(cur, dict) and part in cur:
+                    cur = cur[part]
+                else:
+                    cur = None
+                    break
+            if cur not in (None, "", [], {}):
+                return cur
+        return default
+
+    @staticmethod
+    def _raise_on_api_error(result: dict, what: str) -> dict:
+        code = result.get("code", result.get("errcode", 0))
+        if code not in (0, None, "0"):
+            msg = result.get("msg") or result.get("message") or result.get("errmsg") or ""
+            raise RuntimeError(f"HoyoWave {what} 失败：code={code} {msg}")
+        return result
+
+    # -- token ---------------------------------------------------------
+    def _fetch_token_http(self) -> tuple[str, float]:
+        payload = {"app_id": self.app_id, "app_secret": self.app_secret}
+        paths = [self._token_path] if self._token_path else list(self.TOKEN_PATH_CANDIDATES)
+        errors = []
+        for path in paths:
+            try:
+                result = self._http(self.base_url + path, payload)
+            except Exception as e:                       # noqa: BLE001 - 逐个探测
+                errors.append(f"{path}: {e}")
+                continue
+            token = self._dig(result, "data.access_token", "access_token",
+                              "data.app_access_token", "app_access_token",
+                              "data.tenant_access_token", "data.token", "token")
+            if not token:
+                errors.append(f"{path}: 响应里没有 token（{list(result)[:5]}）")
+                continue
+            expires = self._dig(result, "data.expire", "expire", "data.expires_in", "expires_in",
+                                default=7200)
+            self._token_path = path                      # 记住能用的那个
+            return str(token), time.time() + max(60.0, float(expires)) - 60.0
+        raise RuntimeError(
+            "换取 HoyoWave access_token 失败，已尝试：\n  " + "\n  ".join(errors) +
+            "\n如果路径不对，请在 .env 里用 HOYOWAVE_TOKEN_URL 指定，或改为传入 SDK 实例 sdk_app。")
+
+    def access_token(self) -> str:
+        if self._static_token:
+            return self._static_token
+        if self.sdk_app is not None:                     # 交给官方 SDK 管缓存和续期
+            return str(self.sdk_app.get_access_token())
+        if self._token_value and time.time() < self._token_expire_at:
+            return self._token_value
+        self._token_value, self._token_expire_at = self._fetch_token_http()
+        return self._token_value
+
+    def _with_token_retry(self, call):
+        """token 过期（401/403）时刷新一次再试。"""
+        try:
+            return call(self.access_token())
+        except urllib.error.HTTPError as e:
+            if e.code not in (401, 403) or self._static_token or self.sdk_app is not None:
+                raise
+            self._token_value, self._token_expire_at = "", 0.0
+            return call(self.access_token())
+
+    # -- ChatChannel ---------------------------------------------------
     def send_text(self, user_id: str, text: str) -> str:
-        # TODO(hoyowave-1)：换成真实的发消息接口与字段名
-        result = self._request("/open-apis/im/v1/messages", {
-            "receive_id": user_id,
+        payload = {
+            "receiver_id": user_id,
+            "receiver_id_type": self.receiver_id_type,
             "msg_type": "text",
-            "content": json.dumps({"text": text}, ensure_ascii=False),
-        })
-        return str(result.get("data", {}).get("message_id", "")) or "sent"
+            "content": text,
+            "send_type": self.send_type,
+        }
+        result = self._with_token_retry(
+            lambda tk: self._http(self.base_url + self.SEND_PATH, payload, tk))
+        self._raise_on_api_error(result, "发消息")
+        return str(self._dig(result, "data.message_id", "message_id", "data.msg_id", default="sent"))
 
     def download_file(self, file_ref: str) -> tuple[str, bytes]:
-        # TODO(hoyowave-3)：换成真实的文件下载接口
-        url = f"{self.base_url}/open-apis/im/v1/files/{file_ref}"
-        req = urllib.request.Request(url)
-        if self._token:
-            req.add_header("Authorization", f"Bearer {self._token}")
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            name = resp.headers.get_filename() or f"{file_ref}.pdf"
-            return name, resp.read()
+        result = self._with_token_retry(
+            lambda tk: self._http(self.base_url + self.FILE_URL_PATH, {"file_key": [file_ref]}, tk))
+        self._raise_on_api_error(result, "取文件直链")
+        mapping = self._dig(result, "data.file_key_to_public_url", "file_key_to_public_url", default={})
+        url = mapping.get(file_ref) if isinstance(mapping, dict) else None
+        if not url:
+            url = self._dig(result, "data.download_url", "download_url")
+        if not url:
+            raise RuntimeError(f"HoyoWave 没有返回 {file_ref} 的下载直链：{result}")
+        name, data = self._http(url, None, None, method="GET", raw=True)   # 直链自带签名，5 分钟有效
+        return name or f"{file_ref}.pdf", data
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -371,9 +474,11 @@ def handle_chat_event(conn: sqlite3.Connection, channel: ChatChannel,
     user_id = str(_pick(payload, "user_id", "sender", "sender.sender_id.open_id",
                         "event.sender.sender_id.open_id", "from_user", "open_id"))
     text = str(_pick(payload, "text", "content", "event.message.content", "message.text"))
-    file_ref = _pick(payload, "file_ref", "file_key", "file_id",
+    file_ref = _pick(payload, "event.message.file.file_key", "message.file.file_key",
+                     "file.file_key", "file_ref", "file_key", "file_id",
                      "event.message.file_key", "message.file_key")
-    file_name = str(_pick(payload, "file_name", "event.message.file_name", "message.file_name"))
+    file_name = str(_pick(payload, "event.message.file.name", "message.file.name", "file.name",
+                          "file_name", "event.message.file_name", "message.file_name"))
 
     def _finish(result: str, **extra) -> dict:
         conn.execute("INSERT OR REPLACE INTO invoice_events (event_id, handled_at, result) VALUES (?,?,?)",
@@ -486,9 +591,18 @@ FastAPI：
 http.server：在 do_GET / do_POST 里调 api(...) 即可。
 
 还要做的两件事：
-  1. 在 hoyowave 后台把机器人的「消息事件」回调地址配成  <你的后端>/api/invoice/callback
-     （内网的话需要内网穿透或走公司网关）
-  2. .env 补上 HOYOWAVE_BASE_URL / HOYOWAVE_APP_ID / HOYOWAVE_APP_SECRET（或 HOYOWAVE_TOKEN）
+  1. HoyoWave 后台 → 应用设置 → 回调配置，填  https://<你的域名>/api/invoice/callback
+     （内网服务需要走公司网关或内网穿透，HoyoWave 要能访问到）
+  2. .env 补上：
+       HOYOWAVE_BASE_URL=https://open.hoyowave.com
+       HOYOWAVE_APP_ID=xxx
+       HOYOWAVE_APP_SECRET=xxx
+       # 可选：HOYOWAVE_TOKEN_URL=/openapi/auth/v1/access_token   # 换 token 的路径若探测不到再指定
+       # 可选：HOYOWAVE_RECEIVER_ID_TYPE=user_id
+
+装了官方 Wave OpenSDK 的话，token 可以直接交给 SDK 管：
+    app = Application.builder(app_id=..., app_secret=...).build()
+    channel = HoyowaveChannel(sdk_app=app)
 """
 
 
@@ -585,5 +699,128 @@ def _selftest() -> None:
     print("\n全部通过 ✅  （渠道用的 MockChannel；换成 HoyowaveChannel 后流程不变）\n")
 
 
+def _selftest_hoyowave() -> None:
+    """
+    用一个「假 HoyoWave」验证 HoyowaveChannel 真的按文档发请求：
+    换 token → 发消息 → 取文件直链 → 下载。不联网，只在 127.0.0.1 上跑。
+    """
+    import shutil
+    import tempfile
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    seen = {"token_hits": 0, "send_bodies": [], "auth_headers": [], "file_bodies": []}
+    TOKEN = "tk-abc123"
+
+    class Fake(BaseHTTPRequestHandler):
+        def log_message(self, *a): pass
+
+        def _json(self, obj, code=200):
+            body = json.dumps(obj).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            if self.path.startswith("/dl/"):
+                data = b"%PDF-1.7 invoice-bytes"
+                self.send_response(200)
+                self.send_header("Content-Type", "application/pdf")
+                self.send_header("Content-Disposition", 'attachment; filename="real_invoice.pdf"')
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            else:
+                self.send_error(404)
+
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(n) or b"{}")
+            auth = self.headers.get("Authorization", "")
+            # 只在第三个候选路径上提供 token —— 顺带验证路径探测
+            if self.path == "/openapi/auth/v3/app_access_token/internal":
+                seen["token_hits"] += 1
+                assert body.get("app_id") and body.get("app_secret"), "换 token 要带 app_id/app_secret"
+                return self._json({"code": 0, "data": {"access_token": TOKEN, "expire": 7200}})
+            if self.path.startswith("/openapi/auth/"):
+                return self.send_error(404)
+            if self.path == "/openapi/im/v1/message/send":
+                seen["send_bodies"].append(body)
+                seen["auth_headers"].append(auth)
+                return self._json({"code": 0, "data": {"message_id": "msg-1"}})
+            if self.path == "/openapi/file/v1/public_url/get":
+                seen["file_bodies"].append(body)
+                key = (body.get("file_key") or [""])[0]
+                port = self.server.server_address[1]
+                return self._json({"code": 0, "data": {"file_key_to_public_url": {
+                    key: f"http://127.0.0.1:{port}/dl/{key}"}}})
+            self.send_error(404)
+
+    srv = HTTPServer(("127.0.0.1", 0), Fake)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+
+    def check(label, got, want):
+        flag = "OK  " if got == want else "FAIL"
+        print(f"  [{flag}] {label}: {got!r}" + ("" if got == want else f"  期望 {want!r}"))
+        assert got == want, label
+
+    try:
+        ch = HoyowaveChannel(base_url=base, app_id="ai", app_secret="as")
+
+        print("\nA) 换 token（前两个候选路径 404，应自动落到第三个）")
+        check("拿到 token", ch.access_token(), TOKEN)
+        check("命中的路径", ch._token_path, "/openapi/auth/v3/app_access_token/internal")
+
+        print("B) 发消息的请求体与文档一致")
+        check("返回 message_id", ch.send_text("u_alice", "你好"), "msg-1")
+        check("请求体", seen["send_bodies"][-1], {
+            "receiver_id": "u_alice", "receiver_id_type": "user_id",
+            "msg_type": "text", "content": "你好", "send_type": "app"})
+        check("鉴权头", seen["auth_headers"][-1], f"Bearer {TOKEN}")
+
+        print("C) token 有缓存，不会每次都换")
+        ch.send_text("u_bob", "第二条")
+        check("换 token 次数", seen["token_hits"], 1)
+
+        print("D) 取直链 + 下载")
+        name, data = ch.download_file("fk-1")
+        check("直链请求体", seen["file_bodies"][-1], {"file_key": ["fk-1"]})
+        check("文件名", name, "real_invoice.pdf")
+        check("内容", data, b"%PDF-1.7 invoice-bytes")
+
+        print("E) 文档给的嵌套回调结构，整条链路走通")
+        tmp = tempfile.mkdtemp(prefix="invoice-hw-")
+        conn = connect(os.path.join(tmp, "t.db"))
+        create_tasks(conn, [{"doc_code": "PO260901", "title": "Figma", "user_id": "u_alice"}])
+        send_pending(conn, ch)
+        r = handle_chat_event(conn, ch, {
+            "event_id": "hw-1",
+            "event": {"sender": {"sender_id": {"open_id": "u_alice"}},
+                      "message": {"content": "发票在这",
+                                  "file": {"file_key": "fk-1", "name": "发票.pdf", "size": 102400}}},
+        }, tmp)
+        check("结果", r["result"], "saved")
+        check("挂到的单号", r["doc_code"], "PO260901")
+        check("落盘", os.path.exists(r["path"]), True)
+        conn.close()
+        shutil.rmtree(tmp, ignore_errors=True)
+
+        print("F) API 返回错误码时抛错而不是静默成功")
+        bad = HoyowaveChannel(base_url=base, token="tk", app_id="a", app_secret="b")
+        try:
+            bad._raise_on_api_error({"code": 40001, "msg": "invalid receiver"}, "发消息")
+            raise AssertionError("应该抛错")
+        except RuntimeError as e:
+            check("错误信息带上了 code", "40001" in str(e), True)
+
+        print("\nHoyoWave 渠道对接验证通过 ✅（对着按文档实现的假服务）\n")
+    finally:
+        srv.shutdown()
+
+
 if __name__ == "__main__":
     _selftest()
+    _selftest_hoyowave()
