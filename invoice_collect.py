@@ -25,6 +25,7 @@ import os
 import re
 import sqlite3
 import secrets
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -75,9 +76,15 @@ def _now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+# 一个连接会被 webhook 线程和 Web 框架的工作线程共用，所以放开线程检查，
+# 再用一把锁把读写串起来（这点量级完全够用，也免了每线程一个连接的复杂度）。
+_LOCK = threading.RLock()
+
+
 def connect(db_path: str = None) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path or DB_PATH)
+    conn = sqlite3.connect(db_path or DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
     return conn
 
@@ -311,7 +318,8 @@ def create_tasks(conn: sqlite3.Connection, rows: Iterable[dict]) -> list[int]:
     rows 里每条至少要有 doc_code 和 user_id。
     """
     ids: list[int] = []
-    for r in rows:
+    with _LOCK:
+      for r in rows:
         doc_code = str(r.get("doc_code") or "").strip()
         user_id = str(r.get("user_id") or "").strip()
         if not doc_code or not user_id:
@@ -325,7 +333,7 @@ def create_tasks(conn: sqlite3.Connection, rows: Iterable[dict]) -> list[int]:
              STATUS_NEW, secrets.token_urlsafe(16), _now(), str(r.get("note") or "")))
         if cur.lastrowid and cur.rowcount:
             ids.append(cur.lastrowid)
-    conn.commit()
+      conn.commit()
     return ids
 
 
@@ -336,7 +344,8 @@ def list_tasks(conn: sqlite3.Connection, status: str = None) -> list[Task]:
         sql += " WHERE status = ?"
         args = (status,)
     sql += " ORDER BY id DESC"
-    return [Task.from_row(r) for r in conn.execute(sql, args)]
+    with _LOCK:
+        return [Task.from_row(r) for r in conn.execute(sql, args).fetchall()]
 
 
 def _ask_text(task: sqlite3.Row, remind: bool = False) -> str:
@@ -362,7 +371,8 @@ def _ask_text(task: sqlite3.Row, remind: bool = False) -> str:
 def send_pending(conn: sqlite3.Connection, channel: ChatChannel) -> dict:
     """把 new 状态的任务逐条发出去。单条失败不影响其它条。"""
     sent, failed = 0, []
-    for row in conn.execute("SELECT * FROM invoice_tasks WHERE status = ?", (STATUS_NEW,)).fetchall():
+    with _LOCK:
+      for row in conn.execute("SELECT * FROM invoice_tasks WHERE status = ?", (STATUS_NEW,)).fetchall():
         try:
             channel.send_text(row["user_id"], _ask_text(row))
             conn.execute("UPDATE invoice_tasks SET status = ?, sent_at = ? WHERE id = ?",
@@ -370,7 +380,7 @@ def send_pending(conn: sqlite3.Connection, channel: ChatChannel) -> dict:
             sent += 1
         except Exception as e:                       # noqa: BLE001 - 单条失败要继续
             failed.append({"id": row["id"], "doc_code": row["doc_code"], "error": str(e)})
-    conn.commit()
+      conn.commit()
     return {"sent": sent, "failed": failed}
 
 
@@ -380,7 +390,8 @@ def remind_overdue(conn: sqlite3.Connection, channel: ChatChannel,
     """超过 overdue_hours 还没回传的催办，最多催 max_reminds 次，两次间隔至少 min_gap_hours。"""
     now = datetime.now()
     reminded, skipped = 0, 0
-    for row in conn.execute("SELECT * FROM invoice_tasks WHERE status = ?", (STATUS_SENT,)).fetchall():
+    with _LOCK:
+      for row in conn.execute("SELECT * FROM invoice_tasks WHERE status = ?", (STATUS_SENT,)).fetchall():
         if row["remind_count"] >= max_reminds:
             skipped += 1
             continue
@@ -396,14 +407,17 @@ def remind_overdue(conn: sqlite3.Connection, channel: ChatChannel,
             "UPDATE invoice_tasks SET remind_count = remind_count + 1, last_remind_at = ? WHERE id = ?",
             (_now(), row["id"]))
         reminded += 1
-    conn.commit()
+      conn.commit()
     return {"reminded": reminded, "skipped": skipped}
 
 
 # ──────────────────────────────────────────────────────────────────────
 # 回调：对方在聊天里把发票发给机器人
 # ──────────────────────────────────────────────────────────────────────
-DOC_CODE_RE = re.compile(r"\b((?:PR|PO|REQ|DIS|HT|CT)[0-9A-Z\-]{6,})\b", re.I)
+# 单号形如 PO260801 / REQ202605080027 / PR260513000041 / HT-2026-0033：
+# 前缀必须大写，且紧跟数字。之前带 re.I 且不要求数字，"preflight.pdf" 会被当成单号
+# PREFLIGHT，"product.pdf" 同理 —— 那会把发票挂到错误的单上。
+DOC_CODE_RE = re.compile(r"\b((?:PR|PO|REQ|DIS|HT|CT)-?\d[0-9A-Z-]{4,})\b")
 
 
 def _pick_task(conn: sqlite3.Connection, user_id: str, hint_text: str) -> tuple[Optional[sqlite3.Row], str]:
@@ -418,13 +432,19 @@ def _pick_task(conn: sqlite3.Connection, user_id: str, hint_text: str) -> tuple[
         (user_id, STATUS_SENT)).fetchall()
     if not pending:
         return None, "no_pending"
+
+    # 1) 待收清单里的单号原样出现在文本/文件名里 —— 最稳，不会误判
+    hint_up = (hint_text or "").upper()
+    for row in pending:
+        if row["doc_code"] and row["doc_code"].upper() in hint_up:
+            return row, "by_code"
+
+    # 2) 文本里有个"像单号"的串，但不在这人的待收清单里 —— 提醒他确认，别乱挂
     hit = DOC_CODE_RE.search(hint_text or "")
     if hit:
-        code = hit.group(1).upper()
-        for row in pending:
-            if row["doc_code"].upper() == code:
-                return row, "by_code"
         return None, "code_not_matched"
+
+    # 3) 只有一单待收，就是它
     if len(pending) == 1:
         return pending[0], "only_one"
     return None, "ambiguous"
@@ -448,6 +468,13 @@ def _save_file(doc_code: str, file_name: str, data: bytes, base_dir: str = None)
 
 def handle_chat_event(conn: sqlite3.Connection, channel: ChatChannel,
                       payload: dict, base_dir: str = None) -> dict:
+    """处理一条聊天回调（对外入口，串行化，可从任意线程调用）。"""
+    with _LOCK:
+        return _handle_chat_event(conn, channel, payload, base_dir)
+
+
+def _handle_chat_event(conn: sqlite3.Connection, channel: ChatChannel,
+                       payload: dict, base_dir: str = None) -> dict:
     """
     处理一条聊天回调。payload 里需要能取到：event_id / 发送者 / 文件引用 / 文本。
     各家字段名不同，这里做了别名兼容；hoyowave 的真实字段确定后按需补进 _pick 列表即可。
@@ -570,7 +597,7 @@ def api(method: str, path: str, body: dict = None, *,
 
 
 README_MOUNT = """
-挂到现有后端（三选一）：
+挂到现有后端（三选一）。模块内部对 SQLite 做了串行化，连接可以在多线程框架里共用：
 
 Flask：
     from invoice_collect import api, connect, HoyowaveChannel
@@ -663,6 +690,19 @@ def _selftest() -> None:
     r = handle_chat_event(conn, ch, {"event_id": "e4", "user_id": "u_bob", "file_ref": "ref-3",
                                      "file_name": "PO260802发票.pdf"}, tmp)
     check("挂到的单号", r["doc_code"], "PO260802")
+
+    print("6b) 文件名里的普通英文单词不能被当成单号")
+    create_tasks(conn, [{"doc_code": "PO260899", "user_id": "u_gina"}])
+    send_pending(conn, ch)
+    for fname in ["preflight.pdf", "product_list.pdf", "process.pdf", "contract.pdf"]:
+        r = handle_chat_event(conn, ch, {"event_id": f"e-{fname}", "user_id": "u_gina",
+                                         "file_ref": "ref-1", "file_name": fname}, tmp)
+        check(f"{fname} 仍按「唯一待收单」归档", r.get("doc_code"), "PO260899")
+        conn.execute("UPDATE invoice_tasks SET status = ? WHERE doc_code = ?", (STATUS_SENT, "PO260899"))
+        conn.commit()
+    r = handle_chat_event(conn, ch, {"event_id": "e-wrongcode", "user_id": "u_gina",
+                                     "file_ref": "ref-1", "text": "这是 PO999999 的"}, tmp)
+    check("真的写错单号时不乱挂", r["result"], "code_not_matched")
 
     print("7) 没有待收单的人发文件")
     check("结果", handle_chat_event(conn, ch, {"event_id": "e5", "user_id": "u_carol",
