@@ -199,11 +199,15 @@ def check_reachability() -> None:
 
 
 def check_userid_source() -> None:
-    record(WARN, "收件人 user_id 从哪来",
-           "台账里只有域账号（如 yihao.liao），HoyoWave 需要的是 user_id。\n"
-           "两条路：① 若 receiver_id_type 支持 email，直接用 <域账号>@mihoyo.com；\n"
-           "        ② 否则需要一个「域账号 → user_id」的查询接口或映射表。\n"
-           "用 --to 测一下就知道哪种能用。")
+    import invoice_collect as ic
+    sample = [{"prCode": "PR260513000041", "skuName": "ChatGPT", "version": "Pro",
+               "currency": "USD", "unitPrice": "200",
+               "requesterName": "示例", "requesterDomain": "sample.domain"}]
+    tasks, _ = ic.tasks_from_ledger(sample)
+    ok = tasks and tasks[0]["user_id"] == "sample.domain"
+    record(PASS if ok else FAIL, "收件人 user_id",
+           "域账号即 user_id，台账行可直接转成收票任务（tasks_from_ledger），不需要映射表。\n"
+           "批量发：python invoice_collect.py --from-ledger 台账.json --dry-run 先看名单")
 
 
 def main() -> int:

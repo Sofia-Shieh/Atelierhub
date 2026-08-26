@@ -551,6 +551,63 @@ def _handle_chat_event(conn: sqlite3.Connection, channel: ChatChannel,
 
 
 # ──────────────────────────────────────────────────────────────────────
+# 台账行 → 收票任务
+# ──────────────────────────────────────────────────────────────────────
+# HoyoWave 的 user_id 就是域账号，台账里本来就有（requesterDomain 之类），
+# 所以不需要额外的映射表。下面把 SAM 台账一行直接转成一条收票任务。
+_LEDGER_ALIASES = {
+    "doc_code": ["prCode", "pr_code", "poCode", "po_code", "contractCode", "contract_code",
+                 "docCode", "doc_code", "sourceDocCode", "source_doc_code"],
+    "title":    ["skuName", "sku_name", "softwareName", "software_name", "title"],
+    "version":  ["version", "sw_version"],
+    "price":    ["unitPrice", "unit_price", "amount", "price"],
+    "currency": ["currency"],
+    "payee":    ["vendor", "supplier", "payee"],
+}
+_LEDGER_WHO = {
+    "requester": (["requesterDomain", "requester_domain"], ["requesterName", "requester_name"]),
+    "claimer":   (["claimUserDomain", "claim_user_domain"], ["claimUserName", "claim_user_name"]),
+}
+
+
+def _first(row: dict, keys: list) -> str:
+    for k in keys:
+        v = row.get(k)
+        if v not in (None, "", [], {}):
+            return str(v).strip()
+    return ""
+
+
+def tasks_from_ledger(rows: Iterable[dict], who: str = "requester") -> tuple[list[dict], list[dict]]:
+    """
+    把台账行转成 create_tasks 能吃的任务。
+    who="requester" 找申请人，"claimer" 找领用人。
+    返回 (可用任务, 跳过的行及原因) —— 跳过的不静默丢掉，交给调用方看。
+    """
+    id_keys, name_keys = _LEDGER_WHO.get(who, _LEDGER_WHO["requester"])
+    tasks, skipped = [], []
+    for row in rows:
+        doc_code = _first(row, _LEDGER_ALIASES["doc_code"])
+        user_id = _first(row, id_keys)
+        if not doc_code or not user_id:
+            skipped.append({"row": row, "why": "缺单号" if not doc_code else f"缺 {who} 域账号"})
+            continue
+        title = _first(row, _LEDGER_ALIASES["title"])
+        version = _first(row, _LEDGER_ALIASES["version"])
+        price = _first(row, _LEDGER_ALIASES["price"])
+        currency = _first(row, _LEDGER_ALIASES["currency"])
+        tasks.append({
+            "doc_code": doc_code,
+            "title": f"{title} {version}".strip(),
+            "amount": f"{currency} {price}".strip() if price else "",
+            "payee": _first(row, _LEDGER_ALIASES["payee"]),
+            "user_id": user_id,
+            "user_name": _first(row, name_keys),
+        })
+    return tasks, skipped
+
+
+# ──────────────────────────────────────────────────────────────────────
 # 给前端「票据收集」板块用的 API
 # ──────────────────────────────────────────────────────────────────────
 def api(method: str, path: str, body: dict = None, *,
@@ -726,6 +783,28 @@ def _selftest() -> None:
     conn.commit()
     check("超时后催", remind_overdue(conn, ch, overdue_hours=48)["reminded"] > 0, True)
 
+    print("9b) 台账行 → 收票任务（域账号即 user_id）")
+    ledger = [
+        {"docCode": "DIS202605130008", "prCode": "PR260513000041", "skuName": "ChatGPT",
+         "version": "Pro", "vendor": "OpenAI", "currency": "USD", "unitPrice": "200",
+         "requesterName": "廖奕豪", "requesterDomain": "yihao.liao",
+         "claimUserName": "廖奕豪", "claimUserDomain": "yihao.liao"},
+        {"docCode": "DIS202605120034", "prCode": "", "skuName": "Figma", "version": "Pro",
+         "currency": "USD", "unitPrice": "144",
+         "requesterName": "耿冲", "requesterDomain": "chong.geng"},
+        {"skuName": "没有单号也没有域账号的行"},
+    ]
+    tasks, skipped = tasks_from_ledger(ledger)
+    check("转出条数", len(tasks), 2)
+    check("优先用 PR 号", tasks[0]["doc_code"], "PR260513000041")
+    check("没 PR 号回落到发放单号", tasks[1]["doc_code"], "DIS202605120034")
+    check("user_id 就是域账号", tasks[0]["user_id"], "yihao.liao")
+    check("标题带版本", tasks[0]["title"], "ChatGPT Pro")
+    check("金额带币种", tasks[0]["amount"], "USD 200")
+    check("坏行被跳过而不是静默丢掉", len(skipped), 1)
+    check("跳过原因说得清", skipped[0]["why"], "缺单号")
+    check("按领用人取也行", tasks_from_ledger(ledger, "claimer")[0][0]["user_id"], "yihao.liao")
+
     print("10) HTTP 路由")
     code, obj = api("GET", "/api/invoice/tasks", {"status": STATUS_RECEIVED}, conn=conn, channel=ch)
     check("状态码", code, 200)
@@ -861,6 +940,78 @@ def _selftest_hoyowave() -> None:
         srv.shutdown()
 
 
+def load_dotenv(path: str = ".env") -> None:
+    """没装 python-dotenv 也能读 .env（已存在的环境变量优先）。"""
+    if not os.path.exists(path):
+        return
+    for raw in open(path, encoding="utf-8"):
+        line = raw.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+def _cli() -> int:
+    """不接前端也能用：建任务 / 发消息 / 看进度 / 催办。"""
+    import argparse
+
+    load_dotenv()
+
+    ap = argparse.ArgumentParser(description="票据收集")
+    ap.add_argument("--list", action="store_true", help="列出任务")
+    ap.add_argument("--status", default="", help="配合 --list 筛状态：new/sent/received")
+    ap.add_argument("--from-ledger", metavar="JSON", help="读台账 JSON，建任务并发消息")
+    ap.add_argument("--who", default="requester", choices=["requester", "claimer"],
+                    help="向申请人还是领用人要票，默认申请人")
+    ap.add_argument("--dry-run", action="store_true", help="只打印要发给谁，不真发")
+    ap.add_argument("--remind", action="store_true", help="催办超时未回传的")
+    ap.add_argument("--overdue-hours", type=int, default=48)
+    args = ap.parse_args()
+
+    if not (args.list or args.from_ledger or args.remind):
+        return -1                                   # 没给参数 → 交回去跑自测
+
+    conn = connect()
+    channel = None
+    if (args.from_ledger and not args.dry_run) or args.remind:
+        channel = HoyowaveChannel()
+
+    if args.from_ledger:
+        raw = json.load(open(args.from_ledger, encoding="utf-8"))
+        rows = raw if isinstance(raw, list) else (
+            raw.get("items") or raw.get("rows") or raw.get("list")
+            or (raw.get("data") or {}).get("list") or [])
+        tasks, skipped = tasks_from_ledger(rows, args.who)
+        print(f"台账 {len(rows)} 行 → 可建任务 {len(tasks)} 条，跳过 {len(skipped)} 条")
+        for s in skipped[:10]:
+            print(f"  跳过：{s['why']} · {json.dumps(s['row'], ensure_ascii=False)[:90]}")
+        if args.dry_run:
+            for t in tasks:
+                print(f"  → {t['user_id']}（{t['user_name']}）  {t['doc_code']}  "
+                      f"{t['title']}  {t['amount']}")
+            print("\n（--dry-run，没有真发）")
+            return 0
+        created = create_tasks(conn, tasks)
+        print(f"新建 {len(created)} 条（重复的已忽略）")
+        print("发送结果：", json.dumps(send_pending(conn, channel), ensure_ascii=False))
+
+    if args.remind:
+        print("催办结果：", json.dumps(
+            remind_overdue(conn, channel, args.overdue_hours), ensure_ascii=False))
+
+    if args.list:
+        rows = list_tasks(conn, args.status or None)
+        print(f"{'ID':>4}  {'状态':<9} {'单号':<18} {'收件人':<16} {'文件':<24} 说明")
+        for t in rows:
+            print(f"{t.id:>4}  {t.status:<9} {t.doc_code:<18} {t.user_id:<16} "
+                  f"{(t.file_name or '-'):<24} {t.title}")
+        print(f"共 {len(rows)} 条")
+
+    conn.close()
+    return 0
+
+
 if __name__ == "__main__":
-    _selftest()
-    _selftest_hoyowave()
+    if _cli() == -1:
+        _selftest()
+        _selftest_hoyowave()
