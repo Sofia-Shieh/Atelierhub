@@ -1,0 +1,7 @@
+# 凭证与本地数据：不要提交（Atelierhub 是公开仓库）
+.env
+.env.local
+*.db
+invoices/
+__pycache__/
+*.pyc
