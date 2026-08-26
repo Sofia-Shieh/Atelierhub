@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "neone-ptp-mcp": {
+      "command": "oh-my-mcp connect  https://api.agw.mihoyo.com/_mcp/neone-ptp-svc/mcp"
+    }
+  }
+}
